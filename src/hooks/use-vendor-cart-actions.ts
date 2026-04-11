@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   useAddToCart,
@@ -6,9 +7,15 @@ import {
   useUpdateCartItem,
   useCartQuery,
 } from '@/hooks/use-cart'
+import { ROUTES } from '@/constants/routes'
+import { setPendingCartAdd } from '@/lib/pending-cart'
+import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/utils/api-error'
 
 export function useVendorCartActions() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const authed = useAuthStore(selectIsAuthenticated)
   const { data: cart } = useCartQuery()
   const add = useAddToCart()
   const update = useUpdateCartItem()
@@ -28,6 +35,22 @@ export function useVendorCartActions() {
     vendorProductId: string,
     quantity: number,
   ) => {
+    if (!authed) {
+      setPendingCartAdd({
+        vendorId: menuVendorId,
+        vendorProductId,
+        quantity,
+        returnPath: `${location.pathname}${location.search}${location.hash}`,
+      })
+      navigate(ROUTES.login, {
+        state: {
+          from: `${location.pathname}${location.search}${location.hash}`,
+        },
+      })
+      toast.message('Sign in to add items to your cart')
+      return
+    }
+
     if (
       cart &&
       cart.items.length > 0 &&

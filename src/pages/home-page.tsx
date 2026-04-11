@@ -8,15 +8,17 @@ import { VendorCard } from "@/components/molecules/vendor-card";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { queryKeys } from "@/constants/query-keys";
-import { ROUTES } from "@/constants/routes";
+import { categoryPath, ROUTES } from "@/constants/routes";
 import { fetchHomeScreen } from "@/services/discovery.service";
 import { fetchNearbyVendors } from "@/services/vendors.service";
+import { useAuthStore, selectIsAuthenticated } from "@/stores/auth-store";
 import { useLocationStore } from "@/stores/location-store";
 import { useToggleFavorite } from "@/hooks/use-toggle-favorite";
 import { cn } from "@/lib/utils";
 
 export function HomePage() {
   const navigate = useNavigate();
+  const authed = useAuthStore(selectIsAuthenticated);
   const { city, latitude, longitude } = useLocationStore();
   const [locOpen, setLocOpen] = useState(false);
   const fav = useToggleFavorite();
@@ -76,9 +78,20 @@ export function HomePage() {
           <MapPin className="text-primary size-4 shrink-0" aria-hidden />
           <span className="truncate">{city}</span>
         </button>
-        <Link to={ROUTES.search} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-          Search
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to={ROUTES.browse}
+            className={cn(buttonVariants({ variant: "default", size: "sm" }))}
+          >
+            All products
+          </Link>
+          <Link
+            to={ROUTES.search}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            Search
+          </Link>
+        </div>
       </div>
 
       <LocationPickerDialog open={locOpen} onOpenChange={setLocOpen} />
@@ -94,11 +107,11 @@ export function HomePage() {
           <h2 className="mb-3 text-sm font-semibold tracking-tight">Categories</h2>
           <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {homeQuery.data.categories.map((c) => (
-              <button
+              <Link
                 key={c.id}
-                type="button"
-                onClick={() => navigate(`${ROUTES.search}?q=${encodeURIComponent(c.name)}`)}
-                className="border-border/80 bg-card hover:border-primary/40 flex w-16 shrink-0 flex-col items-center gap-1 rounded-xl border p-2 text-center transition-colors">
+                to={categoryPath(c.id)}
+                className="border-border/80 bg-card hover:border-primary/40 flex w-16 shrink-0 flex-col items-center gap-1 rounded-xl border p-2 text-center transition-colors"
+              >
                 <div className="bg-muted size-8 overflow-hidden rounded-full">
                   {c.imageUrl ? (
                     <img src={c.imageUrl} alt="" className="size-full object-cover" />
@@ -109,7 +122,7 @@ export function HomePage() {
                   )}
                 </div>
                 <span className="line-clamp-2 text-[11px] leading-tight font-medium">{c.name}</span>
-              </button>
+              </Link>
             ))}
           </div>
         </section>
@@ -131,7 +144,17 @@ export function HomePage() {
                   distanceKm={v.distanceKm}
                   isOpen={v.isOpen}
                   isFavorite={v.isFavorite}
-                  onFavoriteClick={() => fav.mutate({ type: "VENDOR", referenceId: v.id })}
+                  onFavoriteClick={() => {
+                    if (!authed) {
+                      navigate(ROUTES.login, {
+                        state: {
+                          from: `${window.location.pathname}${window.location.search}`,
+                        },
+                      });
+                      return;
+                    }
+                    fav.mutate({ type: "VENDOR", referenceId: v.id });
+                  }}
                   favoriteLoading={fav.isPending}
                 />
               </div>
@@ -171,7 +194,17 @@ export function HomePage() {
                   distanceKm={v.distanceKm}
                   isOpen={v.isOpen}
                   isFavorite={false}
-                  onFavoriteClick={() => fav.mutate({ type: "VENDOR", referenceId: v.id })}
+                  onFavoriteClick={() => {
+                    if (!authed) {
+                      navigate(ROUTES.login, {
+                        state: {
+                          from: `${window.location.pathname}${window.location.search}`,
+                        },
+                      });
+                      return;
+                    }
+                    fav.mutate({ type: "VENDOR", referenceId: v.id });
+                  }}
                   favoriteLoading={fav.isPending}
                 />
               ))}

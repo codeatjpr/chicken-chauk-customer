@@ -1,16 +1,12 @@
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
 import { buttonVariants } from '@/components/ui/button'
 import { ROUTES } from '@/constants/routes'
+import { useI18n } from '@/hooks/use-i18n'
 import { cn } from '@/lib/utils'
-import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 
 export function LandingPage() {
-  const authed = useAuthStore(selectIsAuthenticated)
-
-  if (authed) {
-    return <Navigate to={ROUTES.home} replace />
-  }
+  const { t } = useI18n()
 
   return (
     <div className="bg-background relative min-h-svh">
@@ -22,35 +18,49 @@ export function LandingPage() {
           <ThemeToggle />
           <Link
             to={ROUTES.login}
-            className={cn(buttonVariants({ variant: 'default' }))}
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
           >
-            Sign in
+            {t('landing.signInCta')}
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-4 py-16 text-center">
+      <main
+        id="marketing-main"
+        className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-4 py-16 text-center"
+      >
         <div className="space-y-3">
           <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            Fresh meat, delivered in 60 minutes
+            {t('landing.title')}
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg">
-            From verified local vendors directly to your door.
+            {t('landing.subtitle')}
           </p>
         </div>
-        <Link
-          to={ROUTES.login}
-          className={cn(buttonVariants({ size: 'lg' }))}
-        >
-          Order now
-        </Link>
+        <div className="flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link
+            to={ROUTES.home}
+            className={cn(buttonVariants({ size: 'lg' }), 'w-full sm:w-auto')}
+          >
+            {t('landing.browse')}
+          </Link>
+          <Link
+            to={ROUTES.login}
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'lg' }),
+              'w-full sm:w-auto',
+            )}
+          >
+            {t('landing.orderNow')}
+          </Link>
+        </div>
         <p className="text-muted-foreground text-sm">
-          Already have an account?{' '}
+          {t('landing.footer')}{' '}
           <Link
             to={ROUTES.login}
             className="text-primary font-medium underline-offset-4 hover:underline"
           >
-            Sign in
+            {t('landing.signInCta')}
           </Link>
         </p>
       </main>

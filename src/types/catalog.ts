@@ -1,3 +1,22 @@
+export type CategoryDto = {
+  id: string
+  name: string
+  imageUrl: string | null
+  sortOrder: number
+  isActive: boolean
+  _count: { products: number }
+}
+
+export type ProductListItemDto = {
+  id: string
+  name: string
+  description: string | null
+  imageUrl: string | null
+  unit: string
+  isActive: boolean
+  category: { id: string; name: string } | null
+}
+
 export type ProductDetailDto = {
   id: string
   name: string

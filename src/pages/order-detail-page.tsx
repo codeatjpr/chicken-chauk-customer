@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Loader2Icon, MapPin } from 'lucide-react'
+import { ArrowLeft, Loader2Icon, MapPin, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -21,11 +21,15 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
 import { orderTrackingPath, ROUTES, vendorPath } from '@/constants/routes'
+import { useCartQuery } from '@/hooks/use-cart'
+import { reorderFromOrder } from '@/lib/reorder-from-order'
 import * as ordersApi from '@/services/orders.service'
+import type { OrderDetailDto } from '@/types/order'
 import { formatInr } from '@/utils/format'
 import { getApiErrorMessage } from '@/utils/api-error'
 import { cn } from '@/lib/utils'
 import { customerCanCancel, orderStatusLabel } from '@/utils/order-status'
+import { canReorderFromOrder } from '@/utils/order-reorder'
 
 function formatWhen(iso: string) {
   try {
@@ -44,11 +48,34 @@ export function OrderDetailPage() {
   const qc = useQueryClient()
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [reorderOpen, setReorderOpen] = useState(false)
+
+  const { data: cart } = useCartQuery()
 
   const orderQuery = useQuery({
     queryKey: queryKeys.orders.detail(id),
     queryFn: () => ordersApi.fetchOrderById(id),
     enabled: Boolean(id),
+  })
+
+  const o = orderQuery.data
+
+  const reorderMut = useMutation({
+    mutationFn: async (order: OrderDetailDto) => {
+      await reorderFromOrder(order, qc)
+    },
+    onSuccess: (_data, order) => {
+      toast.success('Cart updated — same items as this order')
+      setReorderOpen(false)
+      navigate(vendorPath(order.vendorId))
+    },
+    onError: (e) =>
+      toast.error(
+        getApiErrorMessage(
+          e,
+          'Could not add items — they may be unavailable now',
+        ),
+      ),
   })
 
   const cancelMut = useMutation({
@@ -63,8 +90,6 @@ export function OrderDetailPage() {
     onError: (e) =>
       toast.error(getApiErrorMessage(e, 'Could not cancel order')),
   })
-
-  const o = orderQuery.data
 
   if (!id) {
     return (
@@ -297,6 +322,26 @@ export function OrderDetailPage() {
             </section>
           )}
 
+          {canReorderFromOrder(o) && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full gap-2"
+              disabled={reorderMut.isPending}
+              onClick={() => {
+                if (cart && cart.totalQuantity > 0) setReorderOpen(true)
+                else reorderMut.mutate(o)
+              }}
+            >
+              {reorderMut.isPending ? (
+                <Loader2Icon className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <RotateCcw className="size-4" aria-hidden />
+              )}
+              Order again
+            </Button>
+          )}
+
           {customerCanCancel(o.status) && (
             <Button
               type="button"
@@ -316,6 +361,34 @@ export function OrderDetailPage() {
           />
         </>
       )}
+
+      <AlertDialog open={reorderOpen} onOpenChange={setReorderOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace your cart?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your current cart will be cleared and replaced with the items
+              from this order. Some items may fail if they are no longer
+              listed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={reorderMut.isPending || !o}
+              onClick={(e) => {
+                e.preventDefault()
+                if (o) reorderMut.mutate(o)
+              }}
+            >
+              {reorderMut.isPending && (
+                <Loader2Icon className="me-2 size-4 animate-spin" />
+              )}
+              Replace cart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent>

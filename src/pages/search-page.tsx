@@ -1,12 +1,13 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { VendorCard } from '@/components/molecules/vendor-card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
 import { productPath, ROUTES } from '@/constants/routes'
+import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 import { useDebounceValue } from '@/hooks/use-debounce-value'
 import { useToggleFavorite } from '@/hooks/use-toggle-favorite'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
@@ -15,6 +16,8 @@ import type { ProductSearchHit, VendorSearchHit } from '@/types/discovery'
 import { formatInr } from '@/utils/format'
 
 export function SearchPage() {
+  const navigate = useNavigate()
+  const authed = useAuthStore(selectIsAuthenticated)
   const [searchParams, setSearchParams] = useSearchParams()
   const urlQ = searchParams.get('q') ?? ''
   const [draft, setDraft] = useState(urlQ)
@@ -142,9 +145,17 @@ export function SearchPage() {
                     prepTime={v.prepTime}
                     isOpen={v.isOpen}
                     isFavorite={v.isFavorite}
-                    onFavoriteClick={() =>
+                    onFavoriteClick={() => {
+                      if (!authed) {
+                        navigate(ROUTES.login, {
+                          state: {
+                            from: `${window.location.pathname}${window.location.search}`,
+                          },
+                        })
+                        return
+                      }
                       fav.mutate({ type: 'VENDOR', referenceId: v.id })
-                    }
+                    }}
                     favoriteLoading={fav.isPending}
                   />
                 ))}

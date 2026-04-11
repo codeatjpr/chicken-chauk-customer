@@ -3,6 +3,26 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import * as authApi from '@/services/auth.service'
 import type { AuthTokens, AuthUser } from '@/types/auth'
 
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(message)), ms)
+    promise.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(t)
+        reject(e)
+      },
+    )
+  })
+}
+
 type AuthState = {
   accessToken: string | null
   refreshToken: string | null
@@ -47,16 +67,22 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       bootstrap: async () => {
-        const { accessToken } = get()
-        if (!accessToken) {
-          set({ sessionReady: true })
-          return
-        }
         try {
-          const user = await authApi.getMe()
-          set({ user, sessionReady: true })
-        } catch {
-          get().clearSession()
+          const { accessToken } = get()
+          if (!accessToken) {
+            return
+          }
+          try {
+            const user = await withTimeout(
+              authApi.getMe(),
+              12_000,
+              'Session check timed out',
+            )
+            set({ user })
+          } catch {
+            get().clearSession()
+          }
+        } finally {
           set({ sessionReady: true })
         }
       },

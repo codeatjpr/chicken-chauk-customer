@@ -16,9 +16,9 @@ import { CartLineControls } from '@/components/molecules/cart-line-controls'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { ROUTES, vendorPath } from '@/constants/routes'
+import { categoryPath, ROUTES, vendorPath } from '@/constants/routes'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
-import { fetchProductById } from '@/services/catalog.service'
+import * as catalogApi from '@/services/catalog.service'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
 import { formatInr } from '@/utils/format'
@@ -40,9 +40,15 @@ export function ProductPage() {
     removeLine,
   } = useVendorCartActions()
 
+  const categoriesQuery = useQuery({
+    queryKey: queryKeys.catalog.categories,
+    queryFn: () => catalogApi.fetchCategories(),
+    staleTime: 300_000,
+  })
+
   const productQuery = useQuery({
     queryKey: queryKeys.catalog.product(productId),
-    queryFn: () => fetchProductById(productId),
+    queryFn: () => catalogApi.fetchProductById(productId),
     enabled: Boolean(productId),
   })
 
@@ -93,6 +99,40 @@ export function ProductPage() {
           Home
         </Link>
       </div>
+
+      {categoriesQuery.data?.length ? (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold tracking-tight">
+            Categories
+          </h2>
+          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {categoriesQuery.data.map((c) => (
+              <Link
+                key={c.id}
+                to={categoryPath(c.id)}
+                className="border-border/80 bg-card hover:border-primary/40 flex w-16 shrink-0 flex-col items-center gap-1 rounded-xl border p-2 text-center transition-colors"
+              >
+                <div className="bg-muted size-8 overflow-hidden rounded-full">
+                  {c.imageUrl ? (
+                    <img
+                      src={c.imageUrl}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-muted-foreground flex size-full items-center justify-center text-xs">
+                      {c.name.slice(0, 1)}
+                    </span>
+                  )}
+                </div>
+                <span className="line-clamp-2 text-[11px] leading-tight font-medium">
+                  {c.name}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {productQuery.isLoading ? (
         <Skeleton className="aspect-square max-w-sm rounded-xl" />
@@ -205,6 +245,11 @@ export function ProductPage() {
           </section>
         </>
       )}
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
       <AlertDialog open={switchOpen} onOpenChange={setSwitchOpen}>
         <AlertDialogContent>

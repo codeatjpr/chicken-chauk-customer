@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Loader2Icon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -25,11 +25,13 @@ import {
   OTP_RESEND_COOLDOWN_SEC,
 } from '@/constants/auth-ui'
 import { ROUTES } from '@/constants/routes'
+import { flushPendingCartAdd } from '@/lib/flush-pending-cart'
 import { cn } from '@/lib/utils'
 import * as authApi from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/utils/api-error'
 import { indianMobileSchema, maskPhoneForOtpStep } from '@/utils/phone'
+import { profileNeedsDisplayName } from '@/utils/profile'
 
 const phoneSchema = z.object({
   phone: indianMobileSchema,
@@ -40,6 +42,7 @@ type PhoneForm = z.infer<typeof phoneSchema>
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const qc = useQueryClient()
   const signIn = useAuthStore((s) => s.signIn)
   const from =
     (location.state as { from?: string } | null)?.from ?? ROUTES.home
@@ -82,10 +85,18 @@ export function LoginPage() {
   const verifyMutation = useMutation({
     mutationFn: ({ phone, code }: { phone: string; code: string }) =>
       authApi.verifyOtp(phone, code),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setOtpError(false)
       signIn(data.tokens, data.user)
       toast.success(data.isNewUser ? 'Welcome!' : 'Signed in')
+
+      if (profileNeedsDisplayName(data.user)) {
+        navigate(ROUTES.onboarding, { replace: true, state: { from } })
+        return
+      }
+
+      const added = await flushPendingCartAdd(qc)
+      if (added) toast.success('Added to cart')
       navigate(from, { replace: true })
     },
     onError: (err) => {

@@ -3,6 +3,13 @@ import type { ApiSuccess } from '@/types/api'
 import type { CartSummaryDto } from '@/types/cart'
 import type { CartValidationResultDto, PaymentMethodDto } from '@/types/order'
 
+export async function clearCart(): Promise<void> {
+  const { data } = await axiosInstance.delete<ApiSuccess<null>>('/cart')
+  if (!data.success) {
+    throw new Error(data.message ?? 'Could not clear cart')
+  }
+}
+
 export async function fetchCart(): Promise<CartSummaryDto | null> {
   const { data } = await axiosInstance.get<ApiSuccess<CartSummaryDto | null>>(
     '/cart',

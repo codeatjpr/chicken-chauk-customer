@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ShoppingBag, Star, Timer } from 'lucide-react'
+import { ArrowLeft, Search, ShoppingBag, Star, Timer } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -15,6 +15,7 @@ import {
 import { CartLineControls } from '@/components/molecules/cart-line-controls'
 import { CartPanel } from '@/components/organisms/cart-panel'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sheet,
@@ -25,6 +26,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
 import { ROUTES } from '@/constants/routes'
+import { useDebounceValue } from '@/hooks/use-debounce-value'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import { fetchVendorProducts } from '@/services/catalog.service'
 import * as ratingsApi from '@/services/ratings.service'
@@ -51,6 +53,7 @@ export function VendorPage() {
   const navigate = useNavigate()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [activeCat, setActiveCat] = useState<string>('all')
+  const [menuFilter, setMenuFilter] = useState('')
 
   const vendorQuery = useQuery({
     queryKey: queryKeys.vendors.detail(vendorId),
@@ -58,9 +61,31 @@ export function VendorPage() {
     enabled: Boolean(vendorId),
   })
 
-  const menuQuery = useQuery({
-    queryKey: queryKeys.catalog.vendorProducts(vendorId),
-    queryFn: () => fetchVendorProducts(vendorId),
+  const debouncedMenuSearch = useDebounceValue(menuFilter, 350)
+  const categoryFilter = activeCat === 'all' ? undefined : activeCat
+  const searchParam =
+    debouncedMenuSearch.trim().length > 0
+      ? debouncedMenuSearch.trim()
+      : undefined
+
+  const menuBaselineQuery = useQuery({
+    queryKey: queryKeys.catalog.vendorProducts(vendorId, undefined, undefined),
+    queryFn: () => fetchVendorProducts(vendorId, { limit: 200 }),
+    enabled: Boolean(vendorId),
+  })
+
+  const menuDisplayQuery = useQuery({
+    queryKey: queryKeys.catalog.vendorProducts(
+      vendorId,
+      categoryFilter,
+      searchParam,
+    ),
+    queryFn: () =>
+      fetchVendorProducts(vendorId, {
+        categoryId: categoryFilter,
+        search: searchParam,
+        limit: 100,
+      }),
     enabled: Boolean(vendorId),
   })
 
@@ -84,18 +109,12 @@ export function VendorPage() {
   } = useVendorCartActions()
 
   const categories: CategoryTab[] = useMemo(() => {
-    const items = menuQuery.data?.items ?? []
+    const items = menuBaselineQuery.data?.items ?? []
     const g = groupByCategory(items)
     return g.map(({ id, name }) => ({ id, name }))
-  }, [menuQuery.data])
+  }, [menuBaselineQuery.data])
 
-  const filteredMenu = useMemo(() => {
-    const items = menuQuery.data?.items ?? []
-    if (activeCat === 'all') return items
-    return items.filter(
-      (r) => (r.product.category?.id ?? '_uncat') === activeCat,
-    )
-  }, [menuQuery.data, activeCat])
+  const displayItems = menuDisplayQuery.data?.items ?? []
 
   const vendor = vendorQuery.data
   const showSticky =
@@ -201,16 +220,26 @@ export function VendorPage() {
 
       <div className="lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-8">
         <div className="min-w-0">
-          {menuQuery.isLoading ? (
+          {menuBaselineQuery.isLoading || menuDisplayQuery.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-24 rounded-xl" />
               ))}
             </div>
-          ) : menuQuery.isError ? (
+          ) : menuDisplayQuery.isError ? (
             <p className="text-destructive text-sm">Menu could not be loaded.</p>
           ) : (
             <>
+              <div className="relative mb-3">
+                <Search className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2" />
+                <Input
+                  className="ps-9"
+                  placeholder="Filter dishes in this menu…"
+                  value={menuFilter}
+                  onChange={(e) => setMenuFilter(e.target.value)}
+                  aria-label="Filter menu"
+                />
+              </div>
               <div className="no-scrollbar -mx-1 mb-4 flex gap-2 overflow-x-auto px-1">
                 <button
                   type="button"
@@ -242,7 +271,12 @@ export function VendorPage() {
               </div>
 
               <ul className="space-y-3">
-                {filteredMenu.map((row) => (
+                {displayItems.length === 0 ? (
+                  <p className="text-muted-foreground py-6 text-center text-sm">
+                    No dishes match your filter.
+                  </p>
+                ) : null}
+                {displayItems.map((row) => (
                   <li
                     key={row.id}
                     className="border-border/80 bg-card flex gap-3 rounded-xl border p-3"
@@ -252,6 +286,10 @@ export function VendorPage() {
                         <img
                           src={row.product.imageUrl}
                           alt=""
+                          width={160}
+                          height={160}
+                          loading="lazy"
+                          decoding="async"
                           className="size-full object-cover"
                         />
                       ) : (

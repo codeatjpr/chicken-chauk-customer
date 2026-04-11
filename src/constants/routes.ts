@@ -1,7 +1,9 @@
 export const ROUTES = {
   root: '/',
   login: '/login',
+  onboarding: '/onboarding',
   home: '/home',
+  browse: '/browse',
   search: '/search',
   orders: '/orders',
   profile: '/profile',
@@ -20,6 +22,10 @@ export function vendorPath(id: string) {
 
 export function productPath(id: string) {
   return `/products/${id}`
+}
+
+export function categoryPath(id: string) {
+  return `/categories/${id}`
 }
 
 export function orderPath(id: string) {

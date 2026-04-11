@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/constants/query-keys'
 import * as cartApi from '@/services/cart.service'
+import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/utils/api-error'
 
 export function useCartQuery() {
+  const authed = useAuthStore(selectIsAuthenticated)
   return useQuery({
     queryKey: queryKeys.cart.summary,
     queryFn: () => cartApi.fetchCart(),
+    enabled: authed,
   })
 }
 
