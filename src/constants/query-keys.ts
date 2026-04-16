@@ -8,6 +8,8 @@ export const queryKeys = {
   discovery: {
     home: (city: string, lat: number, lng: number) =>
       [...root, 'discovery', 'home', city, lat, lng] as const,
+    products: (city: string, categoryId?: string, search?: string) =>
+      [...root, 'discovery', 'products', city, categoryId ?? 'all', search ?? ''] as const,
     search: (q: string, city: string) =>
       [...root, 'discovery', 'search', city, q] as const,
     searchPrefix: [...root, 'discovery', 'search'] as const,
@@ -24,6 +26,8 @@ export const queryKeys = {
       [...root, 'catalog', 'products', categoryId] as const,
     productsAll: [...root, 'catalog', 'products', 'all'] as const,
     product: (id: string) => [...root, 'catalog', 'product', id] as const,
+    productVariants: (id: string) =>
+      [...root, 'catalog', 'product', id, 'variants'] as const,
     vendorProducts: (
       vendorId: string,
       categoryId?: string,

@@ -9,6 +9,7 @@ type VendorCardProps = {
   id: string
   name: string
   logoUrl: string | null
+  bannerUrl?: string | null
   rating: number
   totalRatings: number
   prepTime: number | null
@@ -23,6 +24,7 @@ export function VendorCard({
   id,
   name,
   logoUrl,
+  bannerUrl,
   rating,
   totalRatings,
   prepTime,
@@ -32,6 +34,8 @@ export function VendorCard({
   onFavoriteClick,
   favoriteLoading,
 }: VendorCardProps) {
+  const coverImageUrl = bannerUrl ?? logoUrl
+
   return (
     <div
       className={cn(
@@ -40,10 +44,10 @@ export function VendorCard({
       )}
     >
       <Link to={vendorPath(id)} className="block">
-        <div className="bg-muted relative aspect-[16/7] w-full overflow-hidden">
-          {logoUrl ? (
+        <div className="bg-muted relative aspect-16/7 w-full overflow-hidden">
+          {coverImageUrl ? (
             <img
-              src={logoUrl}
+              src={coverImageUrl}
               alt=""
               className="size-full object-cover"
             />
@@ -98,7 +102,7 @@ export function VendorCard({
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute end-2 top-2 z-10 bg-background/80 hover:bg-background"
+          className="absolute inset-e-2 top-2 z-10 bg-background/80 hover:bg-background"
           aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           disabled={favoriteLoading}
           onClick={(e) => {

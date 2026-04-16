@@ -5,6 +5,7 @@ import type {
   CategoryDto,
   ProductDetailDto,
   ProductListItemDto,
+  ProductVariantDto,
   VendorProductDto,
 } from '@/types/catalog'
 
@@ -56,6 +57,16 @@ export async function fetchProductById(id: string): Promise<ProductDetailDto> {
   )
   if (!data.success || !data.data) {
     throw new Error(data.message ?? 'Product not found')
+  }
+  return data.data
+}
+
+export async function fetchProductVariants(id: string): Promise<ProductVariantDto[]> {
+  const { data } = await axiosInstance.get<ApiSuccess<ProductVariantDto[]>>(
+    `/catalog/products/${id}/variants`,
+  )
+  if (!data.success || !data.data) {
+    throw new Error(data.message ?? 'Could not load product variants')
   }
   return data.data
 }

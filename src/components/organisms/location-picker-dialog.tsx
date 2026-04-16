@@ -1,4 +1,3 @@
-import { MapPin } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +10,10 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  LocationSearchMap,
+  type LocationSelection,
+} from '@/components/organisms/location-search-map'
 import { useLocationStore } from '@/stores/location-store'
 import { toast } from 'sonner'
 
@@ -23,15 +26,17 @@ export function LocationPickerDialog({
   open,
   onOpenChange,
 }: LocationPickerDialogProps) {
-  const { city, latitude, longitude, setLocation } = useLocationStore()
-  const [cityInput, setCityInput] = useState(city)
-  const [latInput, setLatInput] = useState(String(latitude))
-  const [lngInput, setLngInput] = useState(String(longitude))
+  const { city, displayLabel, latitude, longitude, setLocation } = useLocationStore()
+  const [cityInput, setCityInput] = useState(displayLabel)
+  const [selectedSpot, setSelectedSpot] = useState<LocationSelection | null>(null)
+  const [draftLat, setDraftLat] = useState(latitude)
+  const [draftLng, setDraftLng] = useState(longitude)
 
   const syncFromStore = () => {
-    setCityInput(city)
-    setLatInput(String(latitude))
-    setLngInput(String(longitude))
+    setCityInput(displayLabel || city)
+    setSelectedSpot(null)
+    setDraftLat(latitude)
+    setDraftLng(longitude)
   }
 
   const handleOpen = (o: boolean) => {
@@ -40,85 +45,60 @@ export function LocationPickerDialog({
   }
 
   const save = () => {
-    const lat = Number.parseFloat(latInput)
-    const lng = Number.parseFloat(lngInput)
     if (!cityInput.trim()) {
-      toast.error('Enter a city name')
+      toast.error('Enter a delivery area or city name')
       return
     }
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      toast.error('Invalid coordinates')
+    if (!Number.isFinite(draftLat) || !Number.isFinite(draftLng)) {
+      toast.error('Pick a valid delivery location on the map')
       return
     }
-    setLocation(cityInput.trim(), lat, lng)
+    const resolvedCity = selectedSpot?.city?.trim() || cityInput.trim()
+    setLocation(resolvedCity, draftLat, draftLng, cityInput.trim())
     toast.success('Location updated')
     onOpenChange(false)
   }
 
-  const detect = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation not supported')
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLatInput(String(pos.coords.latitude))
-        setLngInput(String(pos.coords.longitude))
-        toast.message('Coordinates updated — adjust city name if needed')
-      },
-      () => toast.error('Could not read your location'),
-    )
-  }
-
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Delivery area</DialogTitle>
+          <DialogTitle>Choose delivery area</DialogTitle>
           <DialogDescription>
-            Set your city and coordinates for nearby vendors and search.
+            Search by city, area, landmark, or pincode, then fine-tune the pin if needed.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-3 py-2">
+        <div className="grid gap-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="loc-city">City</Label>
+            <Label htmlFor="loc-city">Delivery area name</Label>
             <Input
               id="loc-city"
               value={cityInput}
               onChange={(e) => setCityInput(e.target.value)}
-              placeholder="Delhi"
+              placeholder="e.g. Dwarka, Delhi"
             />
+            <p className="text-muted-foreground text-xs">
+              This is the name shown across the customer app for nearby vendors and delivery search.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2">
-              <Label htmlFor="loc-lat">Latitude</Label>
-              <Input
-                id="loc-lat"
-                value={latInput}
-                onChange={(e) => setLatInput(e.target.value)}
-                inputMode="decimal"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="loc-lng">Longitude</Label>
-              <Input
-                id="loc-lng"
-                value={lngInput}
-                onChange={(e) => setLngInput(e.target.value)}
-                inputMode="decimal"
-              />
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={detect}
-          >
-            <MapPin className="size-4" />
-            Use my location (GPS)
-          </Button>
+          <LocationSearchMap
+            latitude={draftLat}
+            longitude={draftLng}
+            initialSearchText={cityInput}
+            label="Pick your delivery spot"
+            description="Search by place, landmark, city, or pincode, or use your current location. You can drag the pin for accuracy."
+            onPick={(selection) => {
+              setSelectedSpot(selection)
+              setDraftLat(selection.latitude)
+              setDraftLng(selection.longitude)
+              setCityInput(selection.area || selection.city || selection.displayName)
+            }}
+          />
+          {selectedSpot ? (
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Selected: <span className="text-foreground font-medium">{selectedSpot.displayName}</span>
+            </p>
+          ) : null}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

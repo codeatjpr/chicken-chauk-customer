@@ -236,14 +236,35 @@ export function OrderDetailPage() {
               {o.items.map((item) => (
                 <li
                   key={item.id}
-                  className="flex justify-between gap-2 text-sm"
+                  className="border-border/70 bg-card flex items-center justify-between gap-3 rounded-xl border p-3 text-sm"
                 >
-                  <span>
-                    {item.productName}{' '}
-                    <span className="text-muted-foreground">
-                      ×{item.quantity} {item.unit}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="bg-muted flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          width={56}
+                          height={56}
+                          loading="lazy"
+                          decoding="async"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-muted-foreground text-xs font-semibold">
+                          {item.productName.slice(0, 1)}
+                        </span>
+                      )}
+                    </div>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {item.productName}
+                      </span>
+                      <span className="text-muted-foreground">
+                        ×{item.quantity} {item.unit}
+                      </span>
                     </span>
-                  </span>
+                  </div>
                   <span className="shrink-0 tabular-nums">
                     {formatInr(item.total)}
                   </span>
@@ -310,7 +331,7 @@ export function OrderDetailPage() {
               <ol className="border-border/60 space-y-2 border-s-2 ps-4 text-sm">
                 {o.statusLogs.map((log, idx) => (
                   <li key={`${log.timestamp}-${idx}`} className="relative">
-                    <span className="bg-background absolute -start-[21px] top-1.5 size-2 rounded-full ring-2 ring-current" />
+                    <span className="bg-background absolute top-1.5 -inset-s-[21px] size-2 rounded-full ring-2 ring-current" />
                     <p className="font-medium">{orderStatusLabel(log.status)}</p>
                     <p className="text-muted-foreground text-xs">
                       {formatWhen(log.timestamp)}

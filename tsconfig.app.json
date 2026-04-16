@@ -6,7 +6,7 @@
     "module": "esnext",
     "types": ["vite/client"],
     "skipLibCheck": true,
-    // "ignoreDeprecations": "6.0", // TODO: remove this once we upgrade to TS 6.0
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

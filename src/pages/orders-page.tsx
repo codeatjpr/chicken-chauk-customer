@@ -150,9 +150,9 @@ export function OrdersPage() {
                     className="hover:bg-muted/40 flex min-w-0 flex-1 items-center gap-3 p-4 transition-colors"
                   >
                     <div className="bg-muted flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg">
-                      {o.vendor.logoUrl ? (
+                      {o.previewImageUrl || o.vendor.logoUrl ? (
                         <img
-                          src={o.vendor.logoUrl}
+                          src={o.previewImageUrl ?? o.vendor.logoUrl ?? undefined}
                           alt=""
                           width={48}
                           height={48}

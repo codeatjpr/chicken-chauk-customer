@@ -1,22 +1,29 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Sparkles, Store } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ProductFavoriteButton } from '@/components/molecules/product-favorite-button'
+import { ProductCard } from '@/components/molecules/product-card'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import {
+  ProductGrid,
+  ProductGridEmptyState,
+  ProductGridSkeleton,
+} from '@/components/organisms/product-grid'
 import { queryKeys } from '@/constants/query-keys'
 import { productPath, ROUTES } from '@/constants/routes'
-import * as catalogApi from '@/services/catalog.service'
+import { fetchDiscoveryProducts } from '@/services/discovery.service'
+import { useLocationStore } from '@/stores/location-store'
 
 export function ProductBrowsePage() {
   const navigate = useNavigate()
   const loadMoreRef = useRef<HTMLDivElement>(null)
+  const { city } = useLocationStore()
 
   const productsQuery = useInfiniteQuery({
-    queryKey: queryKeys.catalog.productsAll,
+    queryKey: queryKeys.discovery.products(city),
     queryFn: ({ pageParam }) =>
-      catalogApi.fetchProducts({
+      fetchDiscoveryProducts({
+        city,
         page: pageParam,
         limit: 24,
       }),
@@ -65,65 +72,70 @@ export function ProductBrowsePage() {
         </Link>
       </div>
 
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">All products</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Browse the full catalog. Add to cart after you sign in.
-        </p>
-      </div>
+      <section className="from-primary/12 via-background to-background border-border/60 overflow-hidden rounded-3xl border bg-linear-to-br p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-primary mb-2 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.22em] uppercase">
+              <Sparkles className="size-3.5" />
+              Curated Catalog
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Explore fresh picks across the full menu
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed sm:text-base">
+              Browse every active product in the catalog, compare categories,
+              and jump into the detail page to see which vendors are selling it
+              in your city.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:max-w-xs">
+            <div className="bg-background/80 rounded-2xl border px-4 py-3 backdrop-blur-sm">
+              <p className="text-muted-foreground text-xs">Visible now</p>
+              <p className="text-lg font-semibold tabular-nums">
+                {productsQuery.isSuccess ? items.length : '...'}
+              </p>
+            </div>
+            <div className="bg-background/80 rounded-2xl border px-4 py-3 backdrop-blur-sm">
+              <p className="text-muted-foreground text-xs">Best for</p>
+              <p className="text-sm font-semibold">Discovering products</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {productsQuery.isLoading ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-[4/5] rounded-xl" />
-          ))}
-        </div>
+        <ProductGridSkeleton count={6} />
       ) : productsQuery.isError ? (
         <p className="text-destructive text-sm">Could not load products.</p>
       ) : items.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No products available.</p>
+        <ProductGridEmptyState
+          icon={Store}
+          title="No products available"
+          description="The catalog is empty right now. Please check back shortly."
+        />
       ) : (
         <>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <ProductGrid>
             {items.map((p) => (
-              <li key={p.id} className="relative">
-                <ProductFavoriteButton
-                  productId={p.id}
-                  className="absolute end-2 top-2 z-10"
-                />
-                <Link
-                  to={productPath(p.id)}
-                  className="border-border/80 bg-card hover:border-primary/30 block overflow-hidden rounded-xl border transition-colors"
-                >
-                  <div className="bg-muted aspect-square w-full overflow-hidden">
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt=""
-                        width={400}
-                        height={400}
-                        loading="lazy"
-                        decoding="async"
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-muted-foreground flex size-full items-center justify-center text-2xl font-medium">
-                        {p.name.slice(0, 1)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-2.5">
-                    <p className="line-clamp-2 text-sm font-medium leading-snug">
-                      {p.name}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      {p.category?.name ?? '—'} · {p.unit}
-                    </p>
-                  </div>
-                </Link>
-              </li>
+              <ProductCard
+                key={p.id}
+                to={productPath(p.product.id)}
+                favoriteProductId={p.product.id}
+                name={p.product.name}
+                imageUrl={p.imageUrl ?? p.product.imageUrl}
+                description={p.product.description}
+                categoryName={p.product.category?.name}
+                unit={
+                  p.variant ? `${p.variant.weight}${p.variant.unit}` : p.product.unit
+                }
+                vendorName={p.vendor.name}
+                price={p.price}
+                mrp={p.mrp}
+                eyebrow="Live offer"
+                badges={!p.vendor.isOpen ? ['Vendor closed'] : []}
+              />
             ))}
-          </ul>
+          </ProductGrid>
           <div ref={loadMoreRef} className="h-8" />
           {productsQuery.isFetchingNextPage && (
             <p className="text-muted-foreground py-4 text-center text-xs">

@@ -1,68 +1,406 @@
-import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { MapPin, Search, Smartphone, Store, Truck } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import logoMark from '@/assets/logo.png'
+import nameLogo from '@/assets/name_logo.png'
+import { BannerCarousel } from '@/components/organisms/banner-carousel'
+import { LocationPickerDialog } from '@/components/organisms/location-picker-dialog'
+import { ProductCard } from '@/components/molecules/product-card'
+import { VendorCard } from '@/components/molecules/vendor-card'
+import { ProductGrid } from '@/components/organisms/product-grid'
+import { SiteFooter } from '@/components/organisms/site-footer'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
-import { buttonVariants } from '@/components/ui/button'
-import { ROUTES } from '@/constants/routes'
-import { useI18n } from '@/hooks/use-i18n'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { queryKeys } from '@/constants/query-keys'
+import { categoryPath, productPath, ROUTES } from '@/constants/routes'
 import { cn } from '@/lib/utils'
+import { fetchDiscoveryProducts, fetchHomeScreen } from '@/services/discovery.service'
+import { fetchNearbyVendors } from '@/services/vendors.service'
+import { useLocationStore } from '@/stores/location-store'
 
 export function LandingPage() {
-  const { t } = useI18n()
+  const navigate = useNavigate()
+  const { city, displayLabel, latitude, longitude } = useLocationStore()
+  const [locOpen, setLocOpen] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
+  const locationLabel = displayLabel || city
+
+  const homeQuery = useQuery({
+    queryKey: queryKeys.discovery.home(city, latitude, longitude),
+    queryFn: () => fetchHomeScreen({ city, latitude, longitude }),
+  })
+
+  const productsQuery = useQuery({
+    queryKey: queryKeys.discovery.products(city, undefined, 'landing'),
+    queryFn: () =>
+      fetchDiscoveryProducts({
+        city,
+        limit: 4,
+      }),
+  })
+
+  const nearbyQuery = useQuery({
+    queryKey: [...queryKeys.vendors.nearby(city, latitude, longitude), 'landing'],
+    queryFn: () =>
+      fetchNearbyVendors({
+        city,
+        latitude,
+        longitude,
+        page: 1,
+        limit: 3,
+        radiusKm: 8,
+      }),
+  })
+
+  const runSearch = () => {
+    const q = searchInput.trim()
+    navigate(q ? `${ROUTES.search}?q=${encodeURIComponent(q)}` : ROUTES.search)
+  }
 
   return (
-    <div className="bg-background relative min-h-svh">
-      <header className="border-border/60 flex items-center justify-between border-b px-4 py-3">
-        <span className="font-heading text-lg font-semibold tracking-tight">
-          Chicken Chauk
-        </span>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Link
-            to={ROUTES.login}
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
-          >
-            {t('landing.signInCta')}
+    <div className="bg-background min-h-svh">
+      <LocationPickerDialog open={locOpen} onOpenChange={setLocOpen} />
+
+      <header className="border-border/70 bg-background/90 sticky top-0 z-20 border-b backdrop-blur-md">
+        <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between gap-3 px-4 lg:h-20 lg:px-6">
+          <Link to={ROUTES.root} className="inline-flex items-center gap-3">
+            <img
+              src={logoMark}
+              alt="Chicken Chauk"
+              className="size-10 rounded-2xl object-contain"
+            />
+            <img
+              src={nameLogo}
+              alt="Chicken Chauk"
+              className="hidden h-8 w-auto object-contain lg:block"
+            />
           </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <a
+              href="#app-download"
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'sm' }),
+                'hidden lg:inline-flex',
+              )}
+            >
+              Get the app
+            </a>
+            <Link to={ROUTES.login} className={cn(buttonVariants({ size: 'sm' }))}>
+              Sign in
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main
-        id="marketing-main"
-        className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-4 py-16 text-center"
-      >
-        <div className="space-y-3">
-          <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            {t('landing.title')}
-          </h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
-            {t('landing.subtitle')}
-          </p>
+      <main id="marketing-main" className="mx-auto w-full max-w-[1280px] px-4 py-6 lg:px-6 lg:py-10">
+        <div className="space-y-8 lg:hidden">
+          <div className="space-y-4 rounded-[2rem] border bg-card/70 p-5 text-center shadow-sm">
+            <img
+              src={nameLogo}
+              alt="Chicken Chauk"
+              className="mx-auto h-12 w-auto object-contain"
+            />
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Fresh meat delivered from trusted local stores
+              </h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Explore categories, compare stores, and sign in when you are ready
+                to order.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button type="button" variant="outline" onClick={() => setLocOpen(true)}>
+                <MapPin className="size-4" />
+                {locationLabel}
+              </Button>
+              <Link to={ROUTES.search} className={cn(buttonVariants({ size: 'lg' }))}>
+                Start browsing
+              </Link>
+            </div>
+          </div>
         </div>
-        <div className="flex w-full max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link
-            to={ROUTES.home}
-            className={cn(buttonVariants({ size: 'lg' }), 'w-full sm:w-auto')}
-          >
-            {t('landing.browse')}
-          </Link>
-          <Link
-            to={ROUTES.login}
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'lg' }),
-              'w-full sm:w-auto',
+
+        <div className="hidden lg:block space-y-12">
+          <section className="overflow-hidden rounded-[2.25rem] bg-[linear-gradient(135deg,#f97316_0%,#fb923c_55%,#fdba74_100%)] px-8 py-10 text-white shadow-[0_24px_80px_-32px_rgba(249,115,22,0.78)]">
+            <div className="grid gap-10 xl:grid-cols-[1.1fr_0.9fr] xl:items-center">
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium backdrop-blur-sm">
+                  <Store className="size-4" />
+                  Delivery marketplace for {locationLabel}
+                </div>
+                <div className="space-y-3">
+                  <h1 className="max-w-3xl text-5xl font-semibold tracking-tight">
+                    Order fresh cuts, seafood, and essentials from stores around you.
+                  </h1>
+                  <p className="max-w-2xl text-lg leading-relaxed text-white/85">
+                    A storefront-style desktop landing page with your branding,
+                    center-aligned content, managed banners, strong category
+                    discovery, and modern search actions.
+                  </p>
+                </div>
+                <div className="grid gap-3 xl:grid-cols-[auto_1fr_auto]">
+                  <button
+                    type="button"
+                    onClick={() => setLocOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-zinc-900 shadow-sm"
+                  >
+                    <MapPin className="text-primary size-4" />
+                    {locationLabel}
+                  </button>
+                  <div className="relative">
+                    <Search className="text-muted-foreground absolute top-1/2 left-4 size-4 -translate-y-1/2" />
+                    <Input
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') runSearch()
+                      }}
+                      placeholder="Search for chicken, seafood, eggs, or nearby stores"
+                      className="h-12 rounded-2xl border-white/15 bg-white pl-10 text-zinc-900"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={runSearch}
+                    className="h-12 rounded-2xl bg-zinc-950 px-6 text-white hover:bg-zinc-900"
+                  >
+                    Search
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    to={ROUTES.search}
+                    className={cn(
+                      buttonVariants({ variant: 'secondary', size: 'lg' }),
+                      'rounded-2xl bg-white text-zinc-900 hover:bg-white/95',
+                    )}
+                  >
+                    Explore products
+                  </Link>
+                  <Link
+                    to={ROUTES.login}
+                    className={cn(
+                      buttonVariants({ variant: 'outline', size: 'lg' }),
+                      'rounded-2xl border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white',
+                    )}
+                  >
+                    Sign in to order
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                <div className="rounded-[2rem] bg-white/14 p-6 backdrop-blur-sm">
+                  <Truck className="mb-4 size-8" />
+                  <h2 className="text-xl font-semibold">See stores by your area</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-white/80">
+                    Update your delivery location and refresh banners, categories,
+                    stores, and offers for that place.
+                  </p>
+                </div>
+                <div className="rounded-[2rem] bg-white/14 p-6 backdrop-blur-sm">
+                  <Smartphone className="mb-4 size-8" />
+                  <h2 className="text-xl font-semibold">Desktop first, mobile friendly</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-white/80">
+                    Desktop now feels like a marketplace instead of an admin panel,
+                    while mobile keeps the simpler shopping flow.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-4">
+              <div>
+                <p className="text-primary text-sm font-semibold tracking-[0.24em] uppercase">
+                  Featured banners
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                  Manageable campaigns and hero cards
+                </h2>
+              </div>
+              {homeQuery.isLoading ? (
+                <Skeleton className="aspect-16/5 w-full rounded-[2rem]" />
+              ) : homeQuery.data?.banners.length ? (
+                <BannerCarousel banners={homeQuery.data.banners} />
+              ) : (
+                <div className="from-primary/12 via-primary/6 to-background flex aspect-16/5 items-end rounded-[2rem] border bg-linear-to-br p-8">
+                  <div>
+                    <p className="text-primary text-sm font-semibold uppercase">
+                      Chicken Chauk
+                    </p>
+                    <h3 className="mt-2 text-3xl font-semibold tracking-tight">
+                      Managed banners appear here for your selected location.
+                    </h3>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[2rem] border bg-card/70 p-6 shadow-sm">
+                <p className="text-primary text-sm font-semibold uppercase">
+                  Categories
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {homeQuery.data?.categories.slice(0, 4).map((category) => (
+                    <Link
+                      key={category.id}
+                      to={categoryPath(category.id)}
+                      className="rounded-[1.5rem] border bg-background p-4 text-center transition-transform hover:-translate-y-0.5"
+                    >
+                      <div className="bg-muted mx-auto flex size-16 items-center justify-center overflow-hidden rounded-full">
+                        {category.imageUrl ? (
+                          <img
+                            src={category.imageUrl}
+                            alt=""
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-primary text-lg font-semibold">
+                            {category.name.slice(0, 1)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-3 text-sm font-semibold">{category.name}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-primary text-sm font-semibold tracking-[0.24em] uppercase">
+                  Nearby stores
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                  Stores serving {locationLabel}
+                </h2>
+              </div>
+              <Link
+                to={ROUTES.login}
+                className="text-primary text-sm font-semibold"
+              >
+                Sign in to order
+              </Link>
+            </div>
+
+            {nearbyQuery.isLoading ? (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton key={index} className="h-72 rounded-[2rem]" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                {nearbyQuery.data?.items.map((vendor) => (
+                  <VendorCard
+                    key={vendor.id}
+                    id={vendor.id}
+                    name={vendor.name}
+                    logoUrl={vendor.logoUrl}
+                    bannerUrl={vendor.bannerUrl}
+                    rating={vendor.rating}
+                    totalRatings={vendor.totalRatings}
+                    prepTime={vendor.prepTime}
+                    distanceKm={vendor.distanceKm}
+                    isOpen={vendor.isOpen}
+                  />
+                ))}
+              </div>
             )}
+          </section>
+
+          <section className="space-y-5">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-primary text-sm font-semibold tracking-[0.24em] uppercase">
+                  Popular products
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                  Live area products on desktop
+                </h2>
+              </div>
+              <Link to={ROUTES.search} className="text-primary text-sm font-semibold">
+                Search catalog
+              </Link>
+            </div>
+
+            <ProductGrid className="lg:grid-cols-2 xl:grid-cols-4">
+              {productsQuery.data?.items.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  to={productPath(product.product.id)}
+                  name={product.product.name}
+                  imageUrl={product.imageUrl ?? product.product.imageUrl}
+                  description={product.product.description}
+                  categoryName={product.product.category?.name}
+                  unit={
+                    product.variant
+                      ? `${product.variant.weight}${product.variant.unit}`
+                      : product.product.unit
+                  }
+                  vendorName={product.vendor.name}
+                  price={product.price}
+                  mrp={product.mrp}
+                  eyebrow="Guest preview"
+                />
+              ))}
+            </ProductGrid>
+          </section>
+
+          <section
+            id="app-download"
+            className="overflow-hidden rounded-[2.25rem] bg-zinc-950 px-8 py-8 text-white"
           >
-            {t('landing.orderNow')}
-          </Link>
+            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr] xl:items-center">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium">
+                  <Smartphone className="size-4" />
+                  Get the app
+                </div>
+                <h2 className="text-4xl font-semibold tracking-tight">
+                  Save your address and order faster once you sign in.
+                </h2>
+                <p className="max-w-2xl text-sm leading-relaxed text-zinc-300">
+                  Desktop discovery, mobile convenience, and vendor-driven product
+                  feeds built around your chosen delivery area.
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-[2rem] bg-white p-6 text-zinc-950">
+                  <p className="text-sm font-semibold uppercase text-zinc-500">
+                    Area
+                  </p>
+                  <p className="mt-3 text-2xl font-semibold">{locationLabel}</p>
+                  <p className="mt-2 text-sm text-zinc-600">
+                    Change your location anytime before you sign in.
+                  </p>
+                </div>
+                <div className="rounded-[2rem] bg-white/10 p-6">
+                  <p className="text-sm font-semibold uppercase text-zinc-300">
+                    Start now
+                  </p>
+                  <p className="mt-3 text-2xl font-semibold">Create your first order</p>
+                  <p className="mt-2 text-sm text-zinc-300">
+                    Browse stores and products first, then sign in only when you are ready.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <SiteFooter locationLabel={locationLabel} />
         </div>
-        <p className="text-muted-foreground text-sm">
-          {t('landing.footer')}{' '}
-          <Link
-            to={ROUTES.login}
-            className="text-primary font-medium underline-offset-4 hover:underline"
-          >
-            {t('landing.signInCta')}
-          </Link>
-        </p>
       </main>
     </div>
   )

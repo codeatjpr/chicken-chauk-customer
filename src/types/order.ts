@@ -50,6 +50,7 @@ export type OrderListItemDto = {
   paymentStatus: PaymentStatusDto
   createdAt: string
   vendor: { id: string; name: string; logoUrl: string | null }
+  previewImageUrl: string | null
   delivery: { status: string } | null
   _count: { items: number }
 }
@@ -58,6 +59,7 @@ export type OrderItemDto = {
   id: string
   vendorProductId: string
   productName: string
+  imageUrl: string | null
   quantity: number
   unit: string
   priceAtOrder: number

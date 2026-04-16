@@ -1,6 +1,10 @@
 import { axiosInstance } from '@/lib/axiosInstance'
 import type { ApiSuccess } from '@/types/api'
-import type { DiscoverySearchData, HomeScreenData } from '@/types/discovery'
+import type {
+  DiscoveryProductFeedData,
+  DiscoverySearchData,
+  HomeScreenData,
+} from '@/types/discovery'
 
 export async function fetchHomeScreen(params: {
   city: string
@@ -29,6 +33,23 @@ export async function fetchDiscoverySearch(params: {
   )
   if (!data.success || !data.data) {
     throw new Error(data.message ?? 'Search failed')
+  }
+  return data.data
+}
+
+export async function fetchDiscoveryProducts(params: {
+  city: string
+  categoryId?: string
+  search?: string
+  page?: number
+  limit?: number
+}): Promise<DiscoveryProductFeedData> {
+  const { data } = await axiosInstance.get<ApiSuccess<DiscoveryProductFeedData>>(
+    '/discovery/products',
+    { params: { page: 1, limit: 24, ...params } },
+  )
+  if (!data.success || !data.data) {
+    throw new Error(data.message ?? 'Failed to load products')
   }
   return data.data
 }

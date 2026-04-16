@@ -20,6 +20,7 @@ export type HomeVendorDto = {
   id: string
   name: string
   logoUrl: string | null
+  bannerUrl: string | null
   rating: number
   totalRatings: number
   prepTime: number | null
@@ -43,6 +44,7 @@ export type VendorSearchHit = {
   id: string
   name: string
   logoUrl: string | null
+  bannerUrl: string | null
   rating: number
   totalRatings: number
   prepTime: number | null
@@ -55,13 +57,23 @@ export type VendorSearchHit = {
 
 export type ProductSearchHit = {
   id: string
+  imageUrl?: string | null
   price: number
+  mrp?: number | null
+  stock?: number
   isAvailable: boolean
+  variant?: {
+    id: string
+    name: string
+    weight: number
+    unit: string
+  }
   product: {
     id: string
     name: string
     description: string | null
     imageUrl: string | null
+    unit?: string
     category: { id: string; name: string } | null
   }
   vendor: {
@@ -80,3 +92,5 @@ export type DiscoverySearchData = {
   query: string
   city: string
 }
+
+export type DiscoveryProductFeedData = PaginatedResult<ProductSearchHit>

@@ -1,8 +1,11 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Compass, Search, Store } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { EmptyState } from '@/components/molecules/empty-state'
+import { ProductCard } from '@/components/molecules/product-card'
 import { VendorCard } from '@/components/molecules/vendor-card'
+import { ProductGrid, ProductGridSkeleton } from '@/components/organisms/product-grid'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
@@ -13,7 +16,6 @@ import { useToggleFavorite } from '@/hooks/use-toggle-favorite'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
 import type { ProductSearchHit, VendorSearchHit } from '@/types/discovery'
-import { formatInr } from '@/utils/format'
 
 export function SearchPage() {
   const navigate = useNavigate()
@@ -82,8 +84,7 @@ export function SearchPage() {
 
   useEffect(() => {
     const el = loadMoreRef.current
-    if (!el || !searchQuery.hasNextPage || searchQuery.isFetchingNextPage)
-      return
+    if (!el || !searchQuery.hasNextPage || searchQuery.isFetchingNextPage) return
     const obs = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
@@ -98,10 +99,38 @@ export function SearchPage() {
 
   return (
     <div className="space-y-6 pb-4">
+      <section className="from-primary/12 via-background to-background border-border/60 overflow-hidden rounded-3xl border bg-linear-to-br p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-primary mb-2 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.22em] uppercase">
+              <Compass className="size-3.5" />
+              Discover in {city}
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Search vendors, dishes, and product ideas in one place
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed sm:text-base">
+              Start with a dish, ingredient, or shop name and we&apos;ll surface
+              matching vendors and product offers available near you.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:max-w-xs">
+            <div className="bg-background/80 rounded-2xl border px-4 py-3 backdrop-blur-sm">
+              <p className="text-muted-foreground text-xs">City</p>
+              <p className="text-sm font-semibold">{city}</p>
+            </div>
+            <div className="bg-background/80 rounded-2xl border px-4 py-3 backdrop-blur-sm">
+              <p className="text-muted-foreground text-xs">Results</p>
+              <p className="text-sm font-semibold">{enabled ? 'Live search' : 'Waiting'}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="relative">
-        <Search className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2" />
+        <Search className="text-muted-foreground pointer-events-none absolute inset-s-3 top-1/2 size-4 -translate-y-1/2" />
         <Input
-          className="ps-9"
+          className="bg-card ps-9"
           placeholder="Search vendors or dishes…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -110,29 +139,43 @@ export function SearchPage() {
       </div>
 
       {!enabled ? (
-        <p className="text-muted-foreground text-center text-sm">
-          Type to search in {city}.
-        </p>
+        <EmptyState
+          icon={Search}
+          title={`Search in ${city}`}
+          description="Type a vendor name, dish, or ingredient to start exploring the catalog."
+          className="bg-card/40"
+        />
       ) : searchQuery.isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-40 rounded-xl" />
-          <Skeleton className="h-40 rounded-xl" />
+          <ProductGridSkeleton count={3} />
         </div>
       ) : searchQuery.isError ? (
         <p className="text-destructive text-center text-sm">
           Something went wrong. Try again.
         </p>
       ) : vendors.length === 0 && products.length === 0 ? (
-        <p className="text-muted-foreground text-center text-sm">
-          No results for &ldquo;{q}&rdquo;.
-        </p>
+        <EmptyState
+          icon={Search}
+          title={`No results for "${q}"`}
+          description="Try a broader keyword, product name, or vendor name."
+          className="bg-card/40"
+        />
       ) : (
         <>
           {vendors.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold tracking-tight">
-                Vendors
-              </h2>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">Vendors</h2>
+                  <p className="text-muted-foreground text-sm">
+                    Shops matching your search right now.
+                  </p>
+                </div>
+                <span className="text-muted-foreground hidden text-sm sm:inline">
+                  {vendors.length} result{vendors.length !== 1 ? 's' : ''}
+                </span>
+              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {vendors.map((v) => (
                   <VendorCard
@@ -140,6 +183,7 @@ export function SearchPage() {
                     id={v.id}
                     name={v.name}
                     logoUrl={v.logoUrl}
+                    bannerUrl={v.bannerUrl}
                     rating={v.rating}
                     totalRatings={v.totalRatings}
                     prepTime={v.prepTime}
@@ -165,48 +209,48 @@ export function SearchPage() {
 
           {products.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold tracking-tight">
-                Dishes
-              </h2>
-              <ul className="space-y-2">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    Product offers
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    Compare current vendor pricing and jump into a full detail view.
+                  </p>
+                </div>
+                <span className="text-muted-foreground hidden items-center gap-2 text-sm sm:inline-flex">
+                  <Store className="size-4" />
+                  {products.length} offer{products.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <ProductGrid className="xl:grid-cols-2">
                 {products.map((hit) => (
-                  <li key={hit.id}>
-                    <Link
-                      to={productPath(hit.product.id)}
-                      className="border-border/80 bg-card hover:border-primary/30 flex gap-3 rounded-xl border p-3 transition-colors"
-                    >
-                      <div className="bg-muted size-16 shrink-0 overflow-hidden rounded-lg">
-                        {hit.product.imageUrl ? (
-                          <img
-                            src={hit.product.imageUrl}
-                            alt=""
-                            className="size-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-muted-foreground flex size-full items-center justify-center text-lg font-medium">
-                            {hit.product.name.slice(0, 1)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium">{hit.product.name}</p>
-                        <p className="text-muted-foreground mt-0.5 text-xs">
-                          {hit.vendor.name}
-                          {!hit.vendor.isOpen && (
-                            <span className="text-amber-600 dark:text-amber-400">
-                              {' '}
-                              · Closed
-                            </span>
-                          )}
-                        </p>
-                        <p className="mt-1 text-sm font-semibold tabular-nums">
-                          {formatInr(hit.price)}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
+                  <ProductCard
+                    key={hit.id}
+                    to={productPath(hit.product.id)}
+                    favoriteProductId={hit.product.id}
+                    name={hit.product.name}
+                    imageUrl={hit.imageUrl ?? hit.product.imageUrl}
+                    description={hit.product.description}
+                    categoryName={hit.product.category?.name}
+                    unit={
+                      hit.variant
+                        ? `${hit.variant.weight}${hit.variant.unit}`
+                        : hit.product.unit
+                    }
+                    vendorName={hit.vendor.name}
+                    price={hit.price}
+                    mrp={hit.mrp}
+                    eyebrow="Live offer"
+                    badges={!hit.vendor.isOpen ? ['Vendor closed'] : []}
+                    meta={
+                      <p className="text-muted-foreground text-xs">
+                        {hit.vendor.rating.toFixed(1)} rating
+                      </p>
+                    }
+                  />
                 ))}
-              </ul>
+              </ProductGrid>
             </section>
           )}
 

@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { MapPin } from 'lucide-react'
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -15,6 +14,10 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  LocationSearchMap,
+  type LocationSelection,
+} from '@/components/organisms/location-search-map'
 import type { UserAddressDto } from '@/types/address'
 import { useLocationStore } from '@/stores/location-store'
 import { getApiErrorMessage } from '@/utils/api-error'
@@ -26,8 +29,8 @@ const schema = z.object({
   city: z.string().min(2).max(100),
   state: z.string().min(2).max(100),
   pincode: z.string().regex(/^\d{6}$/, '6-digit pincode'),
-  latitude: z.coerce.number().refine(Number.isFinite, 'Invalid latitude'),
-  longitude: z.coerce.number().refine(Number.isFinite, 'Invalid longitude'),
+  latitude: z.number().refine(Number.isFinite, 'Invalid latitude'),
+  longitude: z.number().refine(Number.isFinite, 'Invalid longitude'),
 })
 
 export type AddAddressFormValues = z.infer<typeof schema>
@@ -50,7 +53,7 @@ export function AddAddressDialog({
 }: AddAddressDialogProps) {
   const { city, latitude, longitude } = useLocationStore()
 
-  const form = useForm({
+  const form = useForm<AddAddressFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       label: 'HOME' as const,
@@ -63,6 +66,10 @@ export function AddAddressDialog({
       longitude,
     },
   })
+
+  const locationSummary = useWatch({ control: form.control, name: 'city' })
+  const latitudeValue = useWatch({ control: form.control, name: 'latitude' })
+  const longitudeValue = useWatch({ control: form.control, name: 'longitude' })
 
   useEffect(() => {
     if (!open) return
@@ -100,19 +107,22 @@ export function AddAddressDialog({
     form,
   ])
 
-  const detect = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation not supported')
-      return
+  const applyPickedLocation = (selection: LocationSelection) => {
+    form.setValue('latitude', selection.latitude, { shouldValidate: true, shouldDirty: true })
+    form.setValue('longitude', selection.longitude, { shouldValidate: true, shouldDirty: true })
+    if (selection.city) {
+      form.setValue('city', selection.city, { shouldValidate: true, shouldDirty: true })
     }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        form.setValue('latitude', pos.coords.latitude)
-        form.setValue('longitude', pos.coords.longitude)
-        toast.message('GPS coordinates applied')
-      },
-      () => toast.error('Could not read your location'),
-    )
+    if (selection.state) {
+      form.setValue('state', selection.state, { shouldValidate: true, shouldDirty: true })
+    }
+    if (selection.pincode) {
+      form.setValue('pincode', selection.pincode.slice(0, 6), {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+    }
+    toast.message('Location updated on the map')
   }
 
   const submit = form.handleSubmit(async (values) => {
@@ -127,14 +137,13 @@ export function AddAddressDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {editing ? 'Edit delivery address' : 'Add delivery address'}
           </DialogTitle>
           <DialogDescription>
-            We deliver to this location. Pin on the map is used for distance
-            checks.
+            Search for the place, adjust the pin if needed, and save a delivery-ready address.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-3">
@@ -182,30 +191,31 @@ export function AddAddressDialog({
               </p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2">
-              <Label htmlFor="addr-lat">Latitude</Label>
-              <Input
-                id="addr-lat"
-                type="number"
-                step="any"
-                {...form.register('latitude', { valueAsNumber: true })}
-              />
+          <div className="space-y-3">
+            <LocationSearchMap
+              latitude={latitudeValue}
+              longitude={longitudeValue}
+              initialSearchText={locationSummary}
+              label="Pin delivery location"
+              description="Search by area, landmark, city, or pincode, or use your current location. Drag the pin if the spot needs adjustment."
+              onPick={applyPickedLocation}
+            />
+            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-2">
+              <p className="text-sm font-medium">Delivery pin is ready</p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                {form.getValues('city') || defaultCity || city
+                  ? `Using ${form.getValues('city') || defaultCity || city} for delivery matching.`
+                  : 'Search or place the pin to confirm the delivery spot.'}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="addr-lng">Longitude</Label>
-              <Input
-                id="addr-lng"
-                type="number"
-                step="any"
-                {...form.register('longitude', { valueAsNumber: true })}
-              />
-            </div>
+            {(form.formState.errors.latitude || form.formState.errors.longitude) && (
+              <p className="text-destructive text-xs">
+                Select a valid location on the map before saving.
+              </p>
+            )}
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={detect}>
-            <MapPin className="size-4" />
-            Use GPS for coordinates
-          </Button>
+          <input type="hidden" {...form.register('latitude', { valueAsNumber: true })} />
+          <input type="hidden" {...form.register('longitude', { valueAsNumber: true })} />
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"

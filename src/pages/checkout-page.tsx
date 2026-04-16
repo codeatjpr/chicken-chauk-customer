@@ -13,6 +13,7 @@ import { queryKeys } from '@/constants/query-keys'
 import { orderPath, ROUTES, vendorPath } from '@/constants/routes'
 import { useCartQuery } from '@/hooks/use-cart'
 import * as addressesApi from '@/services/addresses.service'
+import { validateCartForCheckout } from '@/services/cart.service'
 import * as ordersApi from '@/services/orders.service'
 import * as walletApi from '@/services/wallet.service'
 import { cn } from '@/lib/utils'
@@ -111,6 +112,31 @@ export function CheckoutPage() {
     return Math.min(raw, maxWalletApplicable)
   }, [walletToUse, maxWalletApplicable])
 
+  const appliedCouponCode = useMemo(() => {
+    if (!couponPreview) return undefined
+    const code = couponCode.trim().toUpperCase()
+    return couponPreview.code === code ? couponPreview.code : undefined
+  }, [couponPreview, couponCode])
+
+  const validationPreviewQuery = useQuery({
+    queryKey: [
+      ...queryKeys.cart.summary,
+      'checkout-preview',
+      selectedAddressId ?? 'none',
+      paymentMethod,
+      appliedCouponCode ?? '',
+      walletAmountToUse,
+    ],
+    queryFn: () =>
+      validateCartForCheckout({
+        deliveryAddressId: selectedAddressId!,
+        paymentMethod,
+        couponCode: appliedCouponCode,
+        walletAmountToUse,
+      }),
+    enabled: Boolean(cart && selectedAddressId),
+  })
+
   const placeOrder = useMutation({
     mutationFn: () => {
       if (!selectedAddressId) {
@@ -138,13 +164,19 @@ export function CheckoutPage() {
 
   const summary = useMemo(() => {
     if (!cart) return null
+    const preview = validationPreviewQuery.data
     return {
-      itemsTotal: cart.itemsTotal,
-      deliveryFee: cart.deliveryFee,
-      platformFee: cart.platformFee,
+      itemsTotal: preview?.itemsTotal ?? cart.itemsTotal,
+      deliveryFee: preview?.deliveryFee ?? cart.deliveryFee,
+      platformFee: preview?.platformFee ?? cart.platformFee,
+      taxAmount: preview?.taxAmount ?? 0,
+      discount: preview?.discount ?? 0,
+      walletAmountUsed: preview?.walletAmountToUse ?? 0,
       estimatedTotal: cart.estimatedTotal,
+      totalPayable: preview?.finalAmount ?? cart.estimatedTotal,
+      hasValidatedTotals: Boolean(preview),
     }
-  }, [cart])
+  }, [cart, validationPreviewQuery.data])
 
   if (cartLoading) {
     return (
@@ -370,16 +402,41 @@ export function CheckoutPage() {
                 {formatInr(summary.platformFee)}
               </span>
             </div>
+            <div className="flex justify-between">
+              <span>Taxes & GST</span>
+              <span className="tabular-nums text-foreground">
+                {summary.hasValidatedTotals || summary.taxAmount > 0
+                  ? formatInr(summary.taxAmount)
+                  : 'Calculated after address selection'}
+              </span>
+            </div>
+            {summary.discount > 0 && (
+              <div className="flex justify-between">
+                <span>Discount</span>
+                <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+                  -{formatInr(summary.discount)}
+                </span>
+              </div>
+            )}
+            {summary.walletAmountUsed > 0 && (
+              <div className="flex justify-between">
+                <span>Wallet applied</span>
+                <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+                  -{formatInr(summary.walletAmountUsed)}
+                </span>
+              </div>
+            )}
             <Separator className="my-2" />
             <div className="text-foreground flex justify-between font-semibold">
-              <span>Estimated total</span>
+              <span>{summary.hasValidatedTotals ? 'Total payable' : 'Estimated total'}</span>
               <span className="tabular-nums">
-                {formatInr(summary.estimatedTotal)}
+                {formatInr(summary.hasValidatedTotals ? summary.totalPayable : summary.estimatedTotal)}
               </span>
             </div>
             <p className="text-xs">
-              Final totals are confirmed when you place the order — prices and
-              stock are re-checked on the server.
+              {summary.hasValidatedTotals
+                ? 'These totals come from live backend validation for the selected address, payment method, wallet amount, and coupon.'
+                : 'Final totals are confirmed when you place the order — prices, stock, and taxes are re-checked on the server.'}
             </p>
           </div>
         </>
