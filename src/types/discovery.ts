@@ -4,7 +4,7 @@ export type BannerDto = {
   id: string
   title: string
   imageUrl: string
-  linkType: 'VENDOR' | 'PRODUCT' | 'COUPON' | 'EXTERNAL'
+  linkType: 'VENDOR' | 'PRODUCT' | 'COUPON' | 'EXTERNAL' | 'STATIC'
   linkId: string | null
   externalUrl: string | null
   sortOrder: number

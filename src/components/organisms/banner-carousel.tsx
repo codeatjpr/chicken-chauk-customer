@@ -30,6 +30,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   }, [banners.length])
 
   const onBannerClick = (b: BannerDto) => {
+    if (b.linkType === 'STATIC') return
     if (b.linkType === 'VENDOR' && b.linkId) {
       navigate(vendorPath(b.linkId))
       return
@@ -52,7 +53,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
       <button
         type="button"
         onClick={() => onBannerClick(b)}
-        className="relative aspect-[16/6] w-full md:aspect-[16/5]"
+        className={`relative aspect-[16/6] w-full md:aspect-[16/5] ${b.linkType === 'STATIC' ? 'cursor-default' : 'cursor-pointer'}`}
       >
         <img
           src={b.imageUrl}

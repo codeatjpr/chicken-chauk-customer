@@ -34,6 +34,12 @@ export type VendorProductDto = {
   stock: number
   isAvailable: boolean
   sortOrder: number
+  variant?: {
+    id: string
+    name: string
+    weight: number
+    unit: string
+  }
   product: {
     id: string
     name: string
