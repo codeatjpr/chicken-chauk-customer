@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
-import { ArrowLeft, Loader2Icon, MapPin } from 'lucide-react'
+import { Loader2Icon, MapPin } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Link, useParams } from 'react-router-dom'
+import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { orderPath, ROUTES } from '@/constants/routes'
+import { orderPath } from '@/constants/routes'
 import * as deliveryApi from '@/services/delivery.service'
 import type { DeliveryDetailDto, RiderLocationDto } from '@/types/delivery'
 import { cn } from '@/lib/utils'
@@ -117,8 +117,6 @@ function TrackingMap({
 
 export function OrderTrackingPage() {
   const { id = '' } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-
   const deliveryQuery = useQuery({
     queryKey: queryKeys.delivery.forOrder(id),
     queryFn: () => deliveryApi.fetchDeliveryForOrder(id),
@@ -145,31 +143,6 @@ export function OrderTrackingPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-10">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Link
-          to={ROUTES.orders}
-          className="text-muted-foreground text-sm hover:underline"
-        >
-          All orders
-        </Link>
-        <span className="text-muted-foreground/50">·</span>
-        <Link
-          to={orderPath(id)}
-          className="text-muted-foreground text-sm hover:underline"
-        >
-          Order detail
-        </Link>
-      </div>
-
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Live tracking</h1>
         <p className="text-muted-foreground mt-1 text-sm">

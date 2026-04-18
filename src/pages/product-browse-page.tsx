@@ -1,21 +1,19 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { ArrowLeft, Sparkles, Store } from 'lucide-react'
+import { Sparkles, Store } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { ProductCard } from '@/components/molecules/product-card'
-import { Button } from '@/components/ui/button'
 import {
   ProductGrid,
   ProductGridEmptyState,
   ProductGridSkeleton,
 } from '@/components/organisms/product-grid'
 import { queryKeys } from '@/constants/query-keys'
-import { productPath, ROUTES } from '@/constants/routes'
+import { productPath } from '@/constants/routes'
 import { fetchDiscoveryProducts } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
+import { formatVariantWeightAndUnit } from '@/utils/variant-display'
 
 export function ProductBrowsePage() {
-  const navigate = useNavigate()
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const { city } = useLocationStore()
 
@@ -54,24 +52,6 @@ export function ProductBrowsePage() {
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Link
-          to={ROUTES.home}
-          className="text-muted-foreground text-sm hover:underline"
-        >
-          Home
-        </Link>
-      </div>
-
       <section className="from-primary/12 via-background to-background border-border/60 overflow-hidden rounded-3xl border bg-linear-to-br p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
@@ -126,7 +106,9 @@ export function ProductBrowsePage() {
                 description={p.product.description}
                 categoryName={p.product.category?.name}
                 unit={
-                  p.variant ? `${p.variant.weight}${p.variant.unit}` : p.product.unit
+                  p.variant
+                    ? formatVariantWeightAndUnit(p.variant.weight, p.variant.unit)
+                    : p.product.unit
                 }
                 vendorName={p.vendor.name}
                 price={p.price}

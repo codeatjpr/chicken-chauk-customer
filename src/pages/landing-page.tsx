@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { fetchDiscoveryProducts, fetchHomeScreen } from '@/services/discovery.service'
 import { fetchNearbyVendors } from '@/services/vendors.service'
 import { useLocationStore } from '@/stores/location-store'
+import { formatVariantWeightAndUnit } from '@/utils/variant-display'
 
 export function LandingPage() {
   const navigate = useNavigate()
@@ -244,34 +245,30 @@ export function LandingPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-[2rem] border bg-card/70 p-6 shadow-sm">
-                <p className="text-primary text-sm font-semibold uppercase">
-                  Categories
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {homeQuery.data?.categories.slice(0, 4).map((category) => (
-                    <Link
-                      key={category.id}
-                      to={categoryPath(category.id)}
-                      className="rounded-[1.5rem] border bg-background p-4 text-center transition-transform hover:-translate-y-0.5"
-                    >
-                      <div className="bg-muted mx-auto flex size-16 items-center justify-center overflow-hidden rounded-full">
-                        {category.imageUrl ? (
-                          <img
-                            src={category.imageUrl}
-                            alt=""
-                            className="size-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-primary text-lg font-semibold">
-                            {category.name.slice(0, 1)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-3 text-sm font-semibold">{category.name}</p>
-                    </Link>
-                  ))}
-                </div>
+              <p className="text-primary text-sm font-semibold uppercase">Categories</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+                {homeQuery.data?.categories.slice(0, 4).map((category) => (
+                  <Link
+                    key={category.id}
+                    to={categoryPath(category.id)}
+                    className="group flex flex-col items-center gap-3 text-center outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <div className="bg-muted relative mx-auto aspect-square w-full max-w-30 overflow-hidden rounded-full shadow-md ring-2 ring-border/15 transition-[transform,box-shadow] group-hover:scale-[1.03] group-hover:shadow-lg group-hover:ring-primary/25 sm:max-w-36">
+                      {category.imageUrl ? (
+                        <img
+                          src={category.imageUrl}
+                          alt=""
+                          className="absolute inset-0 size-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-primary flex size-full items-center justify-center text-3xl font-semibold sm:text-4xl">
+                          {category.name.slice(0, 1)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold sm:text-base">{category.name}</p>
+                  </Link>
+                ))}
               </div>
             </div>
           </section>
@@ -346,7 +343,10 @@ export function LandingPage() {
                   categoryName={product.product.category?.name}
                   unit={
                     product.variant
-                      ? `${product.variant.weight}${product.variant.unit}`
+                      ? formatVariantWeightAndUnit(
+                          product.variant.weight,
+                          product.variant.unit,
+                        )
                       : product.product.unit
                   }
                   vendorName={product.vendor.name}

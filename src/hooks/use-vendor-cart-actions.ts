@@ -43,9 +43,7 @@ export function useVendorCartActions() {
         returnPath: `${location.pathname}${location.search}${location.hash}`,
       })
       navigate(ROUTES.login, {
-        state: {
-          from: `${location.pathname}${location.search}${location.hash}`,
-        },
+        state: { from: `${location.pathname}${location.search}${location.hash}` },
       })
       toast.message('Sign in to add items to your cart')
       return

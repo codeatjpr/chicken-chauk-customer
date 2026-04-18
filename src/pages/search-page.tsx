@@ -16,6 +16,7 @@ import { useToggleFavorite } from '@/hooks/use-toggle-favorite'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
 import type { ProductSearchHit, VendorSearchHit } from '@/types/discovery'
+import { formatVariantWeightAndUnit } from '@/utils/variant-display'
 
 export function SearchPage() {
   const navigate = useNavigate()
@@ -235,7 +236,10 @@ export function SearchPage() {
                     categoryName={hit.product.category?.name}
                     unit={
                       hit.variant
-                        ? `${hit.variant.weight}${hit.variant.unit}`
+                        ? formatVariantWeightAndUnit(
+                            hit.variant.weight,
+                            hit.variant.unit,
+                          )
                         : hit.product.unit
                     }
                     vendorName={hit.vendor.name}

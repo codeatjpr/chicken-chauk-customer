@@ -2,14 +2,18 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { BannerDto } from '@/types/discovery'
 import { productPath, vendorPath } from '@/constants/routes'
 
 type BannerCarouselProps = {
   banners: BannerDto[]
+  /** Stretch to parent height (e.g. desktop grid column beside stacked cards). */
+  fillHeight?: boolean
+  className?: string
 }
 
-export function BannerCarousel({ banners }: BannerCarouselProps) {
+export function BannerCarousel({ banners, fillHeight, className }: BannerCarouselProps) {
   const [i, setI] = useState(0)
   const navigate = useNavigate()
 
@@ -49,16 +53,28 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const b = banners[i]
 
   return (
-    <div className="relative w-full overflow-hidden rounded-xl">
+    <div
+      className={cn(
+        'relative w-full overflow-hidden',
+        fillHeight ? 'h-full min-h-[260px] rounded-[2rem]' : 'rounded-xl',
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={() => onBannerClick(b)}
-        className={`relative aspect-[16/6] w-full md:aspect-[16/5] ${b.linkType === 'STATIC' ? 'cursor-default' : 'cursor-pointer'}`}
+        className={cn(
+          'relative w-full overflow-hidden',
+            fillHeight
+            ? 'block h-full min-h-[260px]'
+            : 'aspect-[16/9] md:aspect-[16/6] lg:aspect-[16/5]',
+          b.linkType === 'STATIC' ? 'cursor-default' : 'cursor-pointer',
+        )}
       >
         <img
           src={b.imageUrl}
           alt={b.title}
-          className="size-full object-cover"
+          className={cn('object-cover', fillHeight ? 'absolute inset-0 size-full' : 'size-full')}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <span className="absolute bottom-3 left-3 text-left text-lg font-medium text-white drop-shadow-md sm:text-xl">

@@ -1,31 +1,8 @@
-import { ArrowLeft, LifeBuoy } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
-import { ROUTES } from '@/constants/routes'
+import { LifeBuoy } from 'lucide-react'
 
 export function HelpPage() {
-  const navigate = useNavigate()
-
   return (
     <div className="mx-auto max-w-lg space-y-6 pb-10">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Link
-          to={ROUTES.profile}
-          className="text-muted-foreground text-sm hover:underline"
-        >
-          Account
-        </Link>
-      </div>
-
       <div className="flex items-start gap-3">
         <LifeBuoy className="text-primary mt-0.5 size-7 shrink-0" aria-hidden />
         <div>

@@ -5,22 +5,21 @@ import {
   Heart,
   HelpCircle,
   Loader2Icon,
+  LogOut,
   MapPin,
+  Moon,
+  Monitor,
   Package,
+  Sun,
+  User,
   Wallet,
 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTheme } from 'next-themes'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Button, buttonVariants } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -35,10 +34,22 @@ import { formatInr } from '@/utils/format'
 import { cn } from '@/lib/utils'
 import { maskPhoneForOtpStep } from '@/utils/phone'
 
-type ProfileForm = {
-  name: string
-  email: string
-}
+type ProfileForm = { name: string; email: string }
+
+const NAV_LINKS = [
+  { to: ROUTES.orders, label: 'My orders', icon: Package, desc: 'Track and manage deliveries' },
+  { to: ROUTES.wallet, label: 'Wallet', icon: Wallet, desc: 'Balance and transaction history' },
+  { to: ROUTES.profileAddresses, label: 'Saved addresses', icon: MapPin, desc: 'Manage delivery addresses' },
+  { to: ROUTES.favorites, label: 'Favorites', icon: Heart, desc: 'Saved restaurants and dishes' },
+  { to: ROUTES.notifications, label: 'Notifications', icon: Bell, desc: 'Order updates and alerts' },
+  { to: ROUTES.help, label: 'Help', icon: HelpCircle, desc: 'Support and FAQs' },
+] as const
+
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+] as const
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -46,6 +57,7 @@ export function ProfilePage() {
   const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
   const signOut = useAuthStore((s) => s.signOut)
+  const { theme, setTheme } = useTheme()
 
   const statsQuery = useQuery({
     queryKey: queryKeys.profile.stats,
@@ -54,34 +66,25 @@ export function ProfilePage() {
 
   const profile = statsQuery.data
 
-  const form = useForm<ProfileForm>({
-    defaultValues: { name: '', email: '' },
-  })
+  const form = useForm<ProfileForm>({ defaultValues: { name: '', email: '' } })
 
   useEffect(() => {
     if (profile) {
-      form.reset({
-        name: profile.name ?? '',
-        email: profile.email ?? '',
-      })
+      form.reset({ name: profile.name ?? '', email: profile.email ?? '' })
     }
   }, [profile, form])
 
   const updateMut = useMutation({
-    mutationFn: (body: { name?: string; email?: string }) =>
-      profileApi.updateProfile(body),
+    mutationFn: (body: { name?: string; email?: string }) => profileApi.updateProfile(body),
     onSuccess: async () => {
       toast.success('Profile updated')
       await qc.invalidateQueries({ queryKey: queryKeys.profile.stats })
       try {
         const me = await getMe()
         setUser(me)
-      } catch {
-        /* optional */
-      }
+      } catch { /* optional */ }
     },
-    onError: (e) =>
-      toast.error(getApiErrorMessage(e, 'Could not update profile')),
+    onError: (e) => toast.error(getApiErrorMessage(e, 'Could not update profile')),
   })
 
   const handleSignOut = async () => {
@@ -114,177 +117,182 @@ export function ProfilePage() {
   })
 
   return (
-    <div className="mx-auto max-w-md space-y-6 pb-8">
-      <div>
-        <h1 className="font-heading text-xl font-semibold tracking-tight">
-          Account
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
+    <div className="pb-8 lg:pb-12">
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
+        <p className="text-muted-foreground mt-0.5 text-sm">
           Orders, wallet, and profile details.
         </p>
       </div>
 
-      {statsQuery.isLoading ? (
-        <Skeleton className="h-32 rounded-xl" />
-      ) : statsQuery.isError ? (
-        <p className="text-destructive text-sm">Could not load your stats.</p>
-      ) : profile ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Wallet</CardDescription>
-              <CardTitle className="text-lg tabular-nums">
-                {formatInr(profile.stats.walletBalance)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Orders</CardDescription>
-              <CardTitle className="text-lg tabular-nums">
-                {profile.stats.totalOrders}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-muted-foreground text-xs">
-              {profile.stats.deliveredOrders} delivered ·{' '}
-              {profile.stats.cancelledOrders} cancelled
-            </CardContent>
-          </Card>
+      {/*
+        Layout strategy:
+          Mobile  → single column DOM order: [top] avatar/stats → quick-links → form/appearance/sign-out [bottom]
+          Desktop → two-column grid:  col-1 row-1 avatar/stats, col-2 rows 1-2 quick-links, col-1 row-2 form/appearance/sign-out
+      */}
+      <div className="lg:grid lg:grid-cols-[1fr_380px] lg:gap-8 lg:items-start">
+
+        {/* ── TOP-LEFT: Avatar + stats ── col-1 row-1 on desktop */}
+        <div className="space-y-5 lg:col-start-1 lg:row-start-1">
+
+          {/* Avatar + name summary */}
+          <div className="border-border/70 bg-card flex items-center gap-5 rounded-2xl border p-5">
+            <div className="bg-primary/10 flex size-16 shrink-0 items-center justify-center rounded-full">
+              <User className="text-primary size-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              {statsQuery.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ) : (
+                <>
+                  <p className="text-lg font-semibold">{profile?.name ?? user?.name ?? 'My Account'}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {user?.phone ? `+91 ${maskPhoneForOtpStep(user.phone)}` : ''}
+                    {profile?.email ? ` · ${profile.email}` : ''}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Stats */}
+          {statsQuery.isLoading ? (
+            <Skeleton className="h-28 rounded-2xl" />
+          ) : statsQuery.isError ? (
+            <p className="text-destructive text-sm">Could not load your stats.</p>
+          ) : profile ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border-border/70 bg-card rounded-2xl border p-4">
+                <p className="text-muted-foreground text-xs font-medium">Wallet balance</p>
+                <p className="mt-1.5 text-2xl font-semibold tabular-nums">
+                  {formatInr(profile.stats.walletBalance)}
+                </p>
+                <Link to={ROUTES.wallet} className="text-primary mt-2 inline-flex items-center gap-1 text-xs font-medium">
+                  View wallet <ChevronRight className="size-3" />
+                </Link>
+              </div>
+              <div className="border-border/70 bg-card rounded-2xl border p-4">
+                <p className="text-muted-foreground text-xs font-medium">Total orders</p>
+                <p className="mt-1.5 text-2xl font-semibold tabular-nums">{profile.stats.totalOrders}</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {profile.stats.deliveredOrders} delivered · {profile.stats.cancelledOrders} cancelled
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
 
-      <Link
-        to={ROUTES.orders}
-        className={cn(
-          buttonVariants({ variant: 'outline' }),
-          'flex w-full items-center justify-between gap-2',
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <Package className="size-4" />
-          My orders
-        </span>
-        <ChevronRight className="size-4 opacity-50" />
-      </Link>
-
-      <Link
-        to={ROUTES.wallet}
-        className={cn(
-          buttonVariants({ variant: 'outline' }),
-          'flex w-full items-center justify-between gap-2',
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <Wallet className="size-4" />
-          Wallet
-        </span>
-        <ChevronRight className="size-4 opacity-50" />
-      </Link>
-
-      <Link
-        to={ROUTES.profileAddresses}
-        className={cn(
-          buttonVariants({ variant: 'outline' }),
-          'flex w-full items-center justify-between gap-2',
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <MapPin className="size-4" />
-          Saved addresses
-        </span>
-        <ChevronRight className="size-4 opacity-50" />
-      </Link>
-
-      <Link
-        to={ROUTES.favorites}
-        className={cn(
-          buttonVariants({ variant: 'outline' }),
-          'flex w-full items-center justify-between gap-2',
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <Heart className="size-4" />
-          Favorites
-        </span>
-        <ChevronRight className="size-4 opacity-50" />
-      </Link>
-
-      <Link
-        to={ROUTES.notifications}
-        className={cn(
-          buttonVariants({ variant: 'outline' }),
-          'flex w-full items-center justify-between gap-2',
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <Bell className="size-4" />
-          Notifications
-        </span>
-        <ChevronRight className="size-4 opacity-50" />
-      </Link>
-
-      <Link
-        to={ROUTES.help}
-        className={cn(
-          buttonVariants({ variant: 'outline' }),
-          'flex w-full items-center justify-between gap-2',
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <HelpCircle className="size-4" />
-          Help
-        </span>
-        <ChevronRight className="size-4 opacity-50" />
-      </Link>
-      <p className="text-muted-foreground -mt-2 text-xs">
-        Saved addresses are also available at checkout.
-      </p>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>How we reach you</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Phone</span>
-            <p className="font-medium">
-              {user?.phone ? maskPhoneForOtpStep(user.phone) : '—'}
+        {/* ── RIGHT / MOBILE-MIDDLE: Quick links ── col-2 rows 1-2 on desktop, between stats and form on mobile */}
+        <div className="mt-5 lg:mt-0 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+          <div className="border-border/70 bg-card sticky top-24 rounded-2xl border overflow-hidden">
+            <div className="border-border/50 border-b px-5 py-4">
+              <h2 className="font-semibold">Quick links</h2>
+              <p className="text-muted-foreground mt-0.5 text-xs">Jump to any section</p>
+            </div>
+            <nav className="p-2">
+              {NAV_LINKS.map(({ to, label, icon: Icon, desc }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="hover:bg-muted/60 flex items-center gap-3 rounded-xl px-3 py-3 transition-colors"
+                >
+                  <div className="bg-primary/8 flex size-9 shrink-0 items-center justify-center rounded-xl">
+                    <Icon className="text-primary size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-muted-foreground text-xs">{desc}</p>
+                  </div>
+                  <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+                </Link>
+              ))}
+            </nav>
+            <p className="text-muted-foreground border-border/50 border-t px-5 py-3 text-xs">
+              Saved addresses are also available at checkout.
             </p>
           </div>
-          <Separator />
-          <form onSubmit={onSaveProfile} className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="prof-name">Display name</Label>
-              <Input id="prof-name" {...form.register('name')} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="prof-email">Email (optional)</Label>
-              <Input
-                id="prof-email"
-                type="email"
-                autoComplete="email"
-                {...form.register('email')}
-              />
-            </div>
-            <Button type="submit" disabled={updateMut.isPending}>
-              {updateMut.isPending && (
-                <Loader2Icon className="size-4 animate-spin" />
-              )}
-              Save changes
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Button
-        type="button"
-        variant="destructive"
-        className="w-full"
-        onClick={() => void handleSignOut()}
-      >
-        Sign out
-      </Button>
+        {/* ── BOTTOM-LEFT: Profile form + Appearance + Sign out ── col-1 row-2 on desktop, last on mobile */}
+        <div className="mt-5 lg:mt-0 lg:col-start-1 lg:row-start-2 space-y-5">
+
+          {/* Profile edit form */}
+          <div className="border-border/70 bg-card rounded-2xl border p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">Profile details</h2>
+              <p className="text-muted-foreground mt-0.5 text-sm">How we reach you</p>
+            </div>
+            <Separator />
+            <div>
+              <p className="text-muted-foreground text-xs">Mobile number</p>
+              <p className="mt-0.5 font-medium">
+                {user?.phone ? `+91 ${user.phone}` : '—'}
+              </p>
+            </div>
+            <form onSubmit={onSaveProfile} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="prof-name">Display name</Label>
+                <Input id="prof-name" placeholder="Your name" {...form.register('name')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prof-email">Email (optional)</Label>
+                <Input
+                  id="prof-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  {...form.register('email')}
+                />
+              </div>
+              <Button type="submit" disabled={updateMut.isPending} className="w-full sm:w-auto">
+                {updateMut.isPending && <Loader2Icon className="size-4 animate-spin" />}
+                Save changes
+              </Button>
+            </form>
+          </div>
+
+          {/* Appearance */}
+          <div className="border-border/70 bg-card rounded-2xl border p-5 space-y-3">
+            <div>
+              <h2 className="font-semibold">Appearance</h2>
+              <p className="text-muted-foreground mt-0.5 text-sm">Choose your preferred theme</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTheme(value)}
+                  className={cn(
+                    'flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-xs font-medium transition-colors',
+                    theme === value
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border/60 hover:bg-muted/60',
+                  )}
+                >
+                  <Icon className="size-5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sign out */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => void handleSignOut()}
+          >
+            <LogOut className="size-4" />
+            Sign out
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

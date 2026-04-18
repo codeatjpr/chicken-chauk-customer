@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Search, ShoppingBag, Sparkles, Star, Timer } from 'lucide-react'
+import { Search, ShoppingBag, Sparkles, Star, Timer } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { productPath, ROUTES } from '@/constants/routes'
+import { productPath } from '@/constants/routes'
 import { useDebounceValue } from '@/hooks/use-debounce-value'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import { fetchVendorProducts } from '@/services/catalog.service'
@@ -36,6 +36,7 @@ import * as ratingsApi from '@/services/ratings.service'
 import { fetchVendorById } from '@/services/vendors.service'
 import type { VendorProductDto } from '@/types/catalog'
 import { formatInr } from '@/utils/format'
+import { formatVariantNameWithWeight } from '@/utils/variant-display'
 import { cn } from '@/lib/utils'
 
 type CategoryTab = { id: string; name: string }
@@ -53,12 +54,15 @@ function groupByCategory(items: VendorProductDto[]) {
 
 function formatVariantLabel(row: VendorProductDto) {
   if (!row.variant) return null
-  return `${row.variant.name} · ${row.variant.weight}${row.variant.unit}`
+  return formatVariantNameWithWeight(
+    row.variant.name,
+    row.variant.weight,
+    row.variant.unit,
+  )
 }
 
 export function VendorPage() {
   const { id: vendorId = '' } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [activeCat, setActiveCat] = useState<string>('all')
   const [menuFilter, setMenuFilter] = useState('')
@@ -124,21 +128,6 @@ export function VendorPage() {
 
   return (
     <div className={cn('pb-6', showSticky && 'pb-28 lg:pb-6')}>
-      <div className="mb-4 flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Link to={ROUTES.home} className="text-muted-foreground text-sm hover:underline">
-          Home
-        </Link>
-      </div>
-
       {vendorQuery.isLoading ? (
         <Skeleton className="mb-6 h-64 rounded-3xl" />
       ) : vendorQuery.isError || !vendor ? (

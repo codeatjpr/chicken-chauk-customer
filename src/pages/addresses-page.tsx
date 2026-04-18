@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft,
   Loader2Icon,
   Pencil,
   Star,
@@ -8,7 +7,6 @@ import {
   Plus,
 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -24,14 +22,12 @@ import { AddAddressDialog } from '@/components/organisms/add-address-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { ROUTES } from '@/constants/routes'
 import * as addressesApi from '@/services/addresses.service'
 import type { UserAddressDto } from '@/types/address'
 import { getApiErrorMessage } from '@/utils/api-error'
 import { cn } from '@/lib/utils'
 
 export function AddressesPage() {
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<UserAddressDto | null>(null)
@@ -103,24 +99,6 @@ export function AddressesPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6 pb-10">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Link
-          to={ROUTES.profile}
-          className="text-muted-foreground text-sm hover:underline"
-        >
-          Account
-        </Link>
-      </div>
-
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">

@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { AppBreadcrumb } from '@/components/organisms/app-breadcrumb'
 import { AppHeader } from '@/components/organisms/app-header'
 import { MobileTabBar } from '@/components/organisms/mobile-tab-bar'
 import { useI18n } from '@/hooks/use-i18n'
@@ -18,9 +19,10 @@ export function MainLayout() {
         <AppHeader />
         <main
           id="main-content"
-          className="mx-auto w-full max-w-[1280px] flex-1 px-3 py-4 sm:px-4 lg:px-6"
+          className="mx-auto w-full max-w-[1400px] flex-1 px-3 py-4 sm:px-4 lg:px-6"
           tabIndex={-1}
         >
+          <AppBreadcrumb />
           <Outlet />
         </main>
       </div>

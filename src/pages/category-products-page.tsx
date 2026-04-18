@@ -1,24 +1,23 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Grid2x2, PackageSearch } from 'lucide-react'
+import { Grid2x2, PackageSearch } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { CategoryPill } from '@/components/molecules/category-pill'
 import { ProductCard } from '@/components/molecules/product-card'
-import { Button } from '@/components/ui/button'
 import {
   ProductGrid,
   ProductGridEmptyState,
   ProductGridSkeleton,
 } from '@/components/organisms/product-grid'
 import { queryKeys } from '@/constants/query-keys'
-import { productPath, ROUTES } from '@/constants/routes'
+import { productPath } from '@/constants/routes'
 import * as catalogApi from '@/services/catalog.service'
 import { fetchDiscoveryProducts } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
+import { formatVariantWeightAndUnit } from '@/utils/variant-display'
 
 export function CategoryProductsPage() {
   const { categoryId = '' } = useParams<{ categoryId: string }>()
-  const navigate = useNavigate()
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const { city } = useLocationStore()
 
@@ -73,24 +72,6 @@ export function CategoryProductsPage() {
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Link
-          to={ROUTES.home}
-          className="text-muted-foreground text-sm hover:underline"
-        >
-          Home
-        </Link>
-      </div>
-
       {categoryQuery.isLoading ? (
         <ProductGridSkeleton count={1} className="grid-cols-1" />
       ) : categoryQuery.isError || !cat ? (
@@ -167,7 +148,9 @@ export function CategoryProductsPage() {
                 description={p.product.description}
                 categoryName={p.product.category?.name}
                 unit={
-                  p.variant ? `${p.variant.weight}${p.variant.unit}` : p.product.unit
+                  p.variant
+                    ? formatVariantWeightAndUnit(p.variant.weight, p.variant.unit)
+                    : p.product.unit
                 }
                 vendorName={p.vendor.name}
                 price={p.price}

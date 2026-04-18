@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BadgePercent, MapPin, Sparkles, Star, Timer } from 'lucide-react'
+import { BadgePercent, MapPin, Sparkles, Star, Timer } from 'lucide-react'
 import { useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,23 +17,21 @@ import { CategoryPill } from '@/components/molecules/category-pill'
 import { CommerceProductCard } from '@/components/molecules/commerce-product-card'
 import { EmptyState } from '@/components/molecules/empty-state'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { categoryPath, ROUTES, vendorPath } from '@/constants/routes'
+import { categoryPath, vendorPath } from '@/constants/routes'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import * as catalogApi from '@/services/catalog.service'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
 import { formatInr } from '@/utils/format'
-
-function formatVariantLabel(weight: number, unit: string) {
-  return `${weight}${unit}`
-}
+import {
+  formatVariantNameWithWeight,
+  formatVariantWeightAndUnit,
+} from '@/utils/variant-display'
 
 export function ProductPage() {
   const { id: productId = '' } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const { city } = useLocationStore()
 
   const {
@@ -103,21 +101,6 @@ export function ProductPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Back"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="size-4" />
-        </Button>
-        <Link to={ROUTES.home} className="text-muted-foreground text-sm hover:underline">
-          Home
-        </Link>
-      </div>
-
       {categoriesQuery.data?.length ? (
         <section className="space-y-3">
           <div>
@@ -203,7 +186,11 @@ export function ProductPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {variants.map((variant) => (
                       <Badge key={variant.id} variant="outline" className="rounded-full px-3 py-1">
-                        {variant.name} · {formatVariantLabel(variant.weight, variant.unit)}
+                        {formatVariantNameWithWeight(
+                          variant.name,
+                          variant.weight,
+                          variant.unit,
+                        )}
                       </Badge>
                     ))}
                   </div>
@@ -250,14 +237,18 @@ export function ProductPage() {
                     imageUrl={hit.imageUrl ?? hit.product.imageUrl}
                     description={
                       hit.variant
-                        ? `${product.name} · ${formatVariantLabel(hit.variant.weight, hit.variant.unit)}`
+                        ? `${product.name} · ${formatVariantWeightAndUnit(hit.variant.weight, hit.variant.unit)}`
                         : product.description
                     }
                     categoryName={product.category?.name}
                     unit={product.unit}
                     variantLabel={
                       hit.variant
-                        ? `${hit.variant.name} · ${formatVariantLabel(hit.variant.weight, hit.variant.unit)}`
+                        ? formatVariantNameWithWeight(
+                            hit.variant.name,
+                            hit.variant.weight,
+                            hit.variant.unit,
+                          )
                         : undefined
                     }
                     price={hit.price}

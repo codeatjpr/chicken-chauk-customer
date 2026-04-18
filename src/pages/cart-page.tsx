@@ -1,3 +1,4 @@
+import { ShoppingCart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { CartLineControls } from '@/components/molecules/cart-line-controls'
 import { buttonVariants } from '@/components/ui/button'
@@ -11,32 +12,36 @@ import { cn } from '@/lib/utils'
 
 export function CartPage() {
   const { data: cart, isLoading } = useCartQuery()
-  const {
-    addIsPending,
-    updateIsPending,
-    updateQty,
-    removeLine,
-    addWithSwitch,
-  } = useVendorCartActions()
+  const { addIsPending, updateIsPending, updateQty, removeLine, addWithSwitch } =
+    useVendorCartActions()
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-24 rounded-xl" />
+      <div className="space-y-4 py-6 lg:grid lg:grid-cols-[1fr_380px] lg:gap-8 lg:space-y-0">
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+        <Skeleton className="h-64 rounded-2xl" />
       </div>
     )
   }
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="space-y-4 py-8 text-center">
-        <p className="text-muted-foreground text-sm">Your cart is empty.</p>
-        <Link
-          to={ROUTES.home}
-          className={cn(buttonVariants(), 'inline-flex')}
-        >
+      <div className="flex flex-col items-center justify-center gap-5 py-20 text-center">
+        <div className="bg-muted flex size-20 items-center justify-center rounded-full">
+          <ShoppingCart className="text-muted-foreground size-9" />
+        </div>
+        <div>
+          <h1 className="text-xl font-semibold">Your cart is empty</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Browse vendors and add items to get started.
+          </p>
+        </div>
+        <Link to={ROUTES.home} className={cn(buttonVariants())}>
           Browse vendors
         </Link>
       </div>
@@ -46,122 +51,142 @@ export function CartPage() {
   const vendorId = cart.vendorId
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Your cart</h1>
+    <div className="pb-8 lg:pb-12">
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Your cart</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          From{' '}
-          <Link
-            to={vendorPath(vendorId)}
-            className="text-foreground font-medium hover:underline"
-          >
+          Ordering from{' '}
+          <Link to={vendorPath(vendorId)} className="text-foreground font-medium hover:underline">
             {cart.vendorName}
           </Link>
         </p>
       </div>
 
-      <ul className="space-y-4">
-        {cart.items.map((item) => (
-          <li
-            key={item.id}
-            className="border-border/80 flex gap-3 rounded-xl border p-3"
-          >
-            <div className="bg-muted size-16 shrink-0 overflow-hidden rounded-lg">
-              {item.imageUrl ? (
-                <img
-                  src={item.imageUrl}
-                  alt=""
-                  className="size-full object-cover"
-                />
-              ) : (
-                <span className="text-muted-foreground flex size-full items-center justify-center text-sm font-medium">
-                  {item.name.slice(0, 1)}
-                </span>
-              )}
+      {/* Desktop two-column / Mobile single column */}
+      <div className="lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
+
+        {/* ── LEFT: Cart items ── */}
+        <div className="space-y-3">
+          {cart.hasChanges && (
+            <div className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 rounded-2xl border px-4 py-3 text-sm">
+              Prices or availability may have changed since you added these items.
             </div>
-            <div className="min-w-0 flex-1">
-              <p
-                className={cn(
-                  'font-medium',
-                  !item.isAvailable && 'text-muted-foreground line-through',
+          )}
+
+          {cart.items.map((item) => (
+            <div
+              key={item.id}
+              className="border-border/70 bg-card flex gap-4 rounded-2xl border p-4"
+            >
+              <div className="bg-muted size-20 shrink-0 overflow-hidden rounded-xl">
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt="" className="size-full object-cover" />
+                ) : (
+                  <span className="text-muted-foreground flex size-full items-center justify-center text-lg font-semibold">
+                    {item.name.slice(0, 1)}
+                  </span>
                 )}
-              >
-                {item.name}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {item.unit} · {formatInr(item.currentPrice)} each
-              </p>
-              {item.priceChanged && (
-                <p className="text-amber-700 dark:text-amber-300 mt-1 text-xs">
-                  Price updated since you added this item.
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={cn(
+                    'font-semibold',
+                    !item.isAvailable && 'text-muted-foreground line-through',
+                  )}
+                >
+                  {item.name}
                 </p>
-              )}
-              <p className="mt-2 text-sm font-semibold tabular-nums">
-                {formatInr(item.total)}
-              </p>
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                  {item.unit} · {formatInr(item.currentPrice)} each
+                </p>
+                {item.priceChanged && (
+                  <p className="text-amber-700 dark:text-amber-300 mt-1 text-xs">
+                    Price updated since you added this item.
+                  </p>
+                )}
+              </div>
+              <div className="flex shrink-0 flex-col items-end justify-between gap-2">
+                <p className="text-base font-semibold tabular-nums">{formatInr(item.total)}</p>
+                <CartLineControls
+                  cart={cart}
+                  vendorProductId={item.vendorProductId}
+                  maxQty={Math.max(0, item.stock)}
+                  isAvailable={item.isAvailable}
+                  isAdding={addIsPending}
+                  isUpdating={updateIsPending}
+                  onAdd={(qty) => addWithSwitch(vendorId, item.vendorProductId, qty)}
+                  onUpdateQty={updateQty}
+                  onRemove={removeLine}
+                />
+              </div>
             </div>
-            <div className="flex shrink-0 flex-col items-end justify-center">
-              <CartLineControls
-                cart={cart}
-                vendorProductId={item.vendorProductId}
-                maxQty={Math.max(0, item.stock)}
-                isAvailable={item.isAvailable}
-                isAdding={addIsPending}
-                isUpdating={updateIsPending}
-                onAdd={(qty) =>
-                  addWithSwitch(vendorId, item.vendorProductId, qty)
-                }
-                onUpdateQty={updateQty}
-                onRemove={removeLine}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+          ))}
 
-      <Separator />
-
-      <div className="text-muted-foreground space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span>Items</span>
-          <span className="tabular-nums text-foreground">
-            {formatInr(cart.itemsTotal)}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span>Delivery</span>
-          <span
+          <Link
+            to={vendorPath(vendorId)}
             className={cn(
-              'tabular-nums',
-              cart.deliveryFee === 0
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-foreground',
+              buttonVariants({ variant: 'outline' }),
+              'mt-2 w-full justify-center lg:w-auto',
             )}
           >
-            {cart.deliveryFee === 0 ? 'FREE' : formatInr(cart.deliveryFee)}
-          </span>
+            + Add more items
+          </Link>
         </div>
-        <div className="flex justify-between">
-          <span>Platform fee</span>
-          <span className="tabular-nums text-foreground">
-            {formatInr(cart.platformFee)}
-          </span>
-        </div>
-        <Separator className="my-3" />
-        <div className="text-foreground flex justify-between text-base font-semibold">
-          <span>Estimated total</span>
-          <span className="tabular-nums">
-            {formatInr(cart.estimatedTotal)}
-          </span>
+
+        {/* ── RIGHT: Order summary ── */}
+        <div className="mt-6 lg:mt-0">
+          <div className="border-border/70 bg-card sticky top-24 rounded-2xl border p-6">
+            <h2 className="mb-4 text-base font-semibold">Order summary</h2>
+
+            <div className="text-muted-foreground space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span>
+                  Items ({cart.items.reduce((s, i) => s + i.quantity, 0)})
+                </span>
+                <span className="tabular-nums text-foreground">{formatInr(cart.itemsTotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Delivery fee</span>
+                <span
+                  className={cn(
+                    'tabular-nums',
+                    cart.deliveryFee === 0
+                      ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                      : 'text-foreground',
+                  )}
+                >
+                  {cart.deliveryFee === 0 ? 'FREE' : formatInr(cart.deliveryFee)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Platform fee</span>
+                <span className="tabular-nums text-foreground">
+                  {formatInr(cart.platformFee)}
+                </span>
+              </div>
+            </div>
+
+            <Separator className="my-4" />
+
+            <div className="flex justify-between text-base font-semibold">
+              <span>Estimated total</span>
+              <span className="tabular-nums">{formatInr(cart.estimatedTotal)}</span>
+            </div>
+
+            <Link
+              to={ROUTES.checkout}
+              className={cn(buttonVariants({ size: 'lg' }), 'mt-5 flex w-full justify-center')}
+            >
+              Proceed to checkout
+            </Link>
+
+            <p className="text-muted-foreground mt-3 text-center text-xs">
+              Taxes and final delivery fee calculated at checkout.
+            </p>
+          </div>
         </div>
       </div>
-
-      <Link
-        to={ROUTES.checkout}
-        className={cn(buttonVariants(), 'flex w-full justify-center')}
-      >
-        Proceed to checkout
-      </Link>
     </div>
   )
 }
