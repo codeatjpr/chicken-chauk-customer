@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { BrowserRouter } from 'react-router-dom'
 import { AppErrorFallback } from '@/components/system/app-error-fallback'
+import { SplashScreen } from '@/components/system/splash-screen'
 import { Toaster } from '@/components/ui/sonner'
 import { createQueryClient } from '@/lib/query-client'
 import { I18nProvider } from '@/providers/i18n-provider'
@@ -28,6 +29,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         >
           <BrowserRouter>
             <I18nProvider>
+              <SplashScreen />
               <div
                 id="a11y-live-polite"
                 className="sr-only"

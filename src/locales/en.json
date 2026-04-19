@@ -12,5 +12,7 @@
   "pwa.install.notNow": "Not now",
   "pwa.install.dismiss": "Dismiss",
   "pwa.ios.region": "Add to Home Screen",
-  "pwa.ios.body": "Tap Share, then “Add to Home Screen” to install this app on your iPhone or iPad."
+  "pwa.ios.body": "Tap Share, then “Add to Home Screen” to install this app on your iPhone or iPad.",
+  "splash.brand": "Chicken Chauk",
+  "splash.tagline": "Fresh meat, delivered fast — from verified local vendors."
 }
