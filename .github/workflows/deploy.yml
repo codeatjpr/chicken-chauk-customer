@@ -43,3 +43,10 @@ jobs:
             docker image prune -f
 
             echo "Deployment done."
+
+            echo "Deploy build to NGINX"
+
+            sudo rm -rf /var/www/chickenchauk/*
+            sudo mkdir -p /var/www/chickenchauk
+
+            sudo cp -r dist/* /var/www/chickenchauk/
