@@ -26,10 +26,25 @@ function isIosSafari(): boolean {
   return iOS && webkit && !/CriOS|FxiOS|EdgiOS/.test(ua)
 }
 
+const IOS_HINT_KEY = 'pwa-ios-hint-shown'
+
+/** iOS has no beforeinstallprompt — one-time hint uses lazy state, not setState in an effect. */
+function shouldShowIosHintInitially(): boolean {
+  try {
+    if (isStandalone()) return false
+    if (sessionStorage.getItem(DISMISS_KEY) === '1') return false
+    if (!isIosSafari()) return false
+    if (sessionStorage.getItem(IOS_HINT_KEY)) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function PwaInstallPrompt() {
   const { t } = useI18n()
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showIosHint, setShowIosHint] = useState(false)
+  const [showIosHint, setShowIosHint] = useState(shouldShowIosHintInitially)
   const [dismissed, setDismissed] = useState(() => {
     try {
       return sessionStorage.getItem(DISMISS_KEY) === '1'
@@ -47,11 +62,6 @@ export function PwaInstallPrompt() {
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
 
-    // iOS has no beforeinstallprompt — one-time hint to use Share → Add to Home Screen
-    if (isIosSafari() && !sessionStorage.getItem('pwa-ios-hint-shown')) {
-      setShowIosHint(true)
-    }
-
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
   }, [dismissed])
 
@@ -68,7 +78,7 @@ export function PwaInstallPrompt() {
 
   const dismissIosHint = useCallback(() => {
     try {
-      sessionStorage.setItem('pwa-ios-hint-shown', '1')
+      sessionStorage.setItem(IOS_HINT_KEY, '1')
     } catch {
       /* ignore */
     }
