@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { AppBreadcrumb } from '@/components/organisms/app-breadcrumb'
 import { AppHeader } from '@/components/organisms/app-header'
 import { MobileFloatingDock } from '@/components/organisms/mobile-floating-dock'
+import { PwaInstallPrompt } from '@/components/system/pwa-install-prompt'
 import { useI18n } from '@/hooks/use-i18n'
 
 export function MainLayout() {
@@ -27,6 +28,7 @@ export function MainLayout() {
         </main>
       </div>
       <MobileFloatingDock />
+      <PwaInstallPrompt />
     </div>
   )
 }

@@ -5,5 +5,12 @@
   "landing.signInCta": "Sign in",
   "landing.orderNow": "Order now",
   "landing.footer": "Already have an account?",
-  "a11y.skipToContent": "Skip to main content"
+  "a11y.skipToContent": "Skip to main content",
+  "pwa.install.region": "Install app",
+  "pwa.install.body": "Install Chicken Chauk on your home screen for quicker access and a full-screen experience.",
+  "pwa.install.cta": "Install",
+  "pwa.install.notNow": "Not now",
+  "pwa.install.dismiss": "Dismiss",
+  "pwa.ios.region": "Add to Home Screen",
+  "pwa.ios.body": "Tap Share, then “Add to Home Screen” to install this app on your iPhone or iPad."
 }
