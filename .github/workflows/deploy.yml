@@ -29,7 +29,7 @@ jobs:
           script: |
             set -e
             echo "Starting deployment..."
-            cd /chickenchauk/customer
+            cd /home/ubuntu/chickenchauk/customer
 
             echo "Sync repo to origin/main (discard any stray local commits)"
             git fetch origin
