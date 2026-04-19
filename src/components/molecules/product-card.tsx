@@ -21,6 +21,8 @@ type ProductCardProps = {
   eyebrow?: string
   badges?: string[]
   meta?: ReactNode
+  /** Optional cart action — rendered as an overlay button on the price bar */
+  cartAction?: ReactNode
   className?: string
 }
 
@@ -38,6 +40,7 @@ export function ProductCard({
   eyebrow,
   badges = [],
   meta,
+  cartAction,
   className,
 }: ProductCardProps) {
   return (
@@ -117,10 +120,19 @@ export function ProductCard({
                     </p>
                   ) : null}
                 </div>
-                <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">
-                  View
-                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-                </span>
+                {cartAction ? (
+                  <div
+                    className="shrink-0"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    {cartAction}
+                  </div>
+                ) : (
+                  <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">
+                    View
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                )}
               </div>
             ) : (
               <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">

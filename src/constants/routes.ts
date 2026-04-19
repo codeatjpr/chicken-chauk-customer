@@ -24,6 +24,10 @@ export function productPath(id: string) {
   return `/products/${id}`
 }
 
+export function vendorProductPath(id: string) {
+  return `/vendor-products/${id}`
+}
+
 export function categoryPath(id: string) {
   return `/categories/${id}`
 }

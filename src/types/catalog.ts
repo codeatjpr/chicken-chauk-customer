@@ -12,18 +12,8 @@ export type ProductListItemDto = {
   name: string
   description: string | null
   imageUrl: string | null
-  unit: string
   isActive: boolean
   category: { id: string; name: string } | null
-}
-
-export type ProductVariantDto = {
-  id: string
-  name: string
-  weight: number
-  unit: string
-  isActive: boolean
-  sortOrder: number
 }
 
 export type ProductDetailDto = {
@@ -31,10 +21,8 @@ export type ProductDetailDto = {
   name: string
   description: string | null
   imageUrl: string | null
-  unit: string
   isActive: boolean
   category: { id: string; name: string } | null
-  variants: ProductVariantDto[]
 }
 
 export type VendorProductDto = {
@@ -45,20 +33,32 @@ export type VendorProductDto = {
   stock: number
   isAvailable: boolean
   sortOrder: number
-  variant?: {
-    id: string
-    name: string
-    weight: number
-    unit: string
-    isActive?: boolean
-    sortOrder?: number
-  }
+  // Pack definition — varies per vendor listing
+  description: string | null
+  quantityValue: number | null
+  quantityUnit: string | null
+  pieces: string | null
+  servings: string | null
   product: {
     id: string
     name: string
     description: string | null
     imageUrl: string | null
-    unit: string
     category: { id: string; name: string } | null
+  }
+}
+
+export type VendorProductDetailDto = VendorProductDto & {
+  vendor: {
+    id: string
+    name: string
+    logoUrl: string | null
+    bannerUrl: string | null
+    city: string
+    rating: number
+    totalRatings: number
+    prepTime: number | null
+    isOpen: boolean
+    isActive: boolean
   }
 }

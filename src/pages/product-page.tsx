@@ -25,10 +25,6 @@ import * as catalogApi from '@/services/catalog.service'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
 import { formatInr } from '@/utils/format'
-import {
-  formatVariantNameWithWeight,
-  formatVariantWeightAndUnit,
-} from '@/utils/variant-display'
 
 export function ProductPage() {
   const { id: productId = '' } = useParams<{ id: string }>()
@@ -58,12 +54,6 @@ export function ProductPage() {
     enabled: Boolean(productId),
   })
 
-  const variantsQuery = useQuery({
-    queryKey: queryKeys.catalog.productVariants(productId),
-    queryFn: () => catalogApi.fetchProductVariants(productId),
-    enabled: Boolean(productId),
-  })
-
   const product = productQuery.data
 
   const searchQuery = useQuery({
@@ -80,11 +70,6 @@ export function ProductPage() {
       }),
     enabled: Boolean(product?.name && productId),
   })
-
-  const variants = useMemo(() => {
-    if (variantsQuery.data?.length) return variantsQuery.data
-    return product?.variants?.filter((variant) => variant.isActive) ?? []
-  }, [product?.variants, variantsQuery.data])
 
   const offers = useMemo(() => {
     const items = searchQuery.data?.products.items ?? []
@@ -152,7 +137,6 @@ export function ProductPage() {
                 {product.category ? (
                   <Badge variant="secondary">{product.category.name}</Badge>
                 ) : null}
-                <Badge variant="outline">{product.unit}</Badge>
                 {offers.length > 0 ? <Badge variant="outline">{offers.length} vendors</Badge> : null}
               </div>
 
@@ -180,22 +164,6 @@ export function ProductPage() {
                 </div>
               </div>
 
-              {variants.length > 0 ? (
-                <div className="mt-6">
-                  <h2 className="text-sm font-semibold tracking-tight">Available variants</h2>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {variants.map((variant) => (
-                      <Badge key={variant.id} variant="outline" className="rounded-full px-3 py-1">
-                        {formatVariantNameWithWeight(
-                          variant.name,
-                          variant.weight,
-                          variant.unit,
-                        )}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </div>
           </section>
 
@@ -235,22 +203,9 @@ export function ProductPage() {
                     name={hit.vendor.name}
                     href={vendorPath(hit.vendor.id)}
                     imageUrl={hit.imageUrl ?? hit.product.imageUrl}
-                    description={
-                      hit.variant
-                        ? `${product.name} · ${formatVariantWeightAndUnit(hit.variant.weight, hit.variant.unit)}`
-                        : product.description
-                    }
+                    description={product.description}
                     categoryName={product.category?.name}
-                    unit={product.unit}
-                    variantLabel={
-                      hit.variant
-                        ? formatVariantNameWithWeight(
-                            hit.variant.name,
-                            hit.variant.weight,
-                            hit.variant.unit,
-                          )
-                        : undefined
-                    }
+                    unit={hit.quantityUnit ?? ''}
                     price={hit.price}
                     mrp={hit.mrp}
                     availabilityLabel={hit.isAvailable && hit.vendor.isOpen ? 'Available' : 'Closed'}

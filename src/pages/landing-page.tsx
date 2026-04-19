@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils'
 import { fetchDiscoveryProducts, fetchHomeScreen } from '@/services/discovery.service'
 import { fetchNearbyVendors } from '@/services/vendors.service'
 import { useLocationStore } from '@/stores/location-store'
-import { formatVariantWeightAndUnit } from '@/utils/variant-display'
 
 export function LandingPage() {
   const navigate = useNavigate()
@@ -341,14 +340,7 @@ export function LandingPage() {
                   imageUrl={product.imageUrl ?? product.product.imageUrl}
                   description={product.product.description}
                   categoryName={product.product.category?.name}
-                  unit={
-                    product.variant
-                      ? formatVariantWeightAndUnit(
-                          product.variant.weight,
-                          product.variant.unit,
-                        )
-                      : product.product.unit
-                  }
+                  unit={product.quantityUnit ?? ''}
                   vendorName={product.vendor.name}
                   price={product.price}
                   mrp={product.mrp}

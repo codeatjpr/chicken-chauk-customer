@@ -62,18 +62,17 @@ export type ProductSearchHit = {
   mrp?: number | null
   stock?: number
   isAvailable: boolean
-  variant?: {
-    id: string
-    name: string
-    weight: number
-    unit: string
-  }
+  // Pack definition — vendor-specific
+  description?: string | null
+  quantityValue?: number | null
+  quantityUnit?: string | null
+  pieces?: string | null
+  servings?: string | null
   product: {
     id: string
     name: string
     description: string | null
     imageUrl: string | null
-    unit?: string
     category: { id: string; name: string } | null
   }
   vendor: {

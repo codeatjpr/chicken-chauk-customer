@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { AppBreadcrumb } from '@/components/organisms/app-breadcrumb'
 import { AppHeader } from '@/components/organisms/app-header'
-import { MobileTabBar } from '@/components/organisms/mobile-tab-bar'
+import { MobileFloatingDock } from '@/components/organisms/mobile-floating-dock'
 import { useI18n } from '@/hooks/use-i18n'
 
 export function MainLayout() {
@@ -15,7 +15,7 @@ export function MainLayout() {
       >
         {t('a11y.skipToContent')}
       </a>
-      <div className="flex min-h-svh min-w-0 flex-col pb-16 lg:pb-0">
+      <div className="flex min-h-svh min-w-0 flex-col pb-40 lg:pb-0">
         <AppHeader />
         <main
           id="main-content"
@@ -26,7 +26,7 @@ export function MainLayout() {
           <Outlet />
         </main>
       </div>
-      <MobileTabBar />
+      <MobileFloatingDock />
     </div>
   )
 }

@@ -1,6 +1,17 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Sparkles, Store } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { CartLineControls } from '@/components/molecules/cart-line-controls'
 import { ProductCard } from '@/components/molecules/product-card'
 import {
   ProductGrid,
@@ -8,14 +19,26 @@ import {
   ProductGridSkeleton,
 } from '@/components/organisms/product-grid'
 import { queryKeys } from '@/constants/query-keys'
-import { productPath } from '@/constants/routes'
+import { vendorProductPath } from '@/constants/routes'
+import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import { fetchDiscoveryProducts } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
-import { formatVariantWeightAndUnit } from '@/utils/variant-display'
 
 export function ProductBrowsePage() {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const { city } = useLocationStore()
+
+  const {
+    cart,
+    addWithSwitch,
+    switchOpen,
+    setSwitchOpen,
+    confirmVendorSwitch,
+    addIsPending,
+    updateIsPending,
+    updateQty,
+    removeLine,
+  } = useVendorCartActions()
 
   const productsQuery = useInfiniteQuery({
     queryKey: queryKeys.discovery.products(city),
@@ -63,9 +86,8 @@ export function ProductBrowsePage() {
               Explore fresh picks across the full menu
             </h1>
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed sm:text-base">
-              Browse every active product in the catalog, compare categories,
-              and jump into the detail page to see which vendors are selling it
-              in your city.
+              Browse live vendor listings. Each card is a real offering from a
+              store near you — tap any item to see full details and add to cart.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:max-w-xs">
@@ -96,27 +118,46 @@ export function ProductBrowsePage() {
       ) : (
         <>
           <ProductGrid>
-            {items.map((p) => (
+            {items.map((p) => {
+              const qtyParts = [
+                p.quantityValue ? `${p.quantityValue}${p.quantityUnit ?? ''}` : null,
+                p.pieces ?? null,
+                p.servings ?? null,
+              ].filter(Boolean)
+              return (
               <ProductCard
                 key={p.id}
-                to={productPath(p.product.id)}
+                to={vendorProductPath(p.id)}
                 favoriteProductId={p.product.id}
                 name={p.product.name}
                 imageUrl={p.imageUrl ?? p.product.imageUrl}
                 description={p.product.description}
                 categoryName={p.product.category?.name}
-                unit={
-                  p.variant
-                    ? formatVariantWeightAndUnit(p.variant.weight, p.variant.unit)
-                    : p.product.unit
-                }
+                unit={p.quantityUnit ?? ''}
                 vendorName={p.vendor.name}
                 price={p.price}
                 mrp={p.mrp}
                 eyebrow="Live offer"
                 badges={!p.vendor.isOpen ? ['Vendor closed'] : []}
+                meta={qtyParts.length > 0 ? (
+                  <p className="text-muted-foreground text-xs">{qtyParts.join(' · ')}</p>
+                ) : undefined}
+                cartAction={
+                  <CartLineControls
+                    cart={cart}
+                    vendorProductId={p.id}
+                    maxQty={p.stock ?? 999}
+                    isAvailable={p.isAvailable && p.vendor.isOpen}
+                    isAdding={addIsPending}
+                    isUpdating={updateIsPending}
+                    onAdd={(qty) => addWithSwitch(p.vendor.id, p.id, qty)}
+                    onUpdateQty={updateQty}
+                    onRemove={removeLine}
+                  />
+                }
               />
-            ))}
+              )
+            })}
           </ProductGrid>
           <div ref={loadMoreRef} className="h-8" />
           {productsQuery.isFetchingNextPage && (
@@ -126,6 +167,23 @@ export function ProductBrowsePage() {
           )}
         </>
       )}
+
+      <AlertDialog open={switchOpen} onOpenChange={setSwitchOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start a new cart?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your cart has items from another vendor. Continuing will clear your current cart.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmVendorSwitch()}>
+              Clear and continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

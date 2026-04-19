@@ -22,6 +22,7 @@ const CategoryProductsPage = lazy(() =>
 );
 const VendorPage = lazy(() => import("@/pages/vendor-page").then((m) => ({ default: m.VendorPage })));
 const ProductPage = lazy(() => import("@/pages/product-page").then((m) => ({ default: m.ProductPage })));
+const VendorProductPage = lazy(() => import("@/pages/vendor-product-page").then((m) => ({ default: m.VendorProductPage })));
 const HelpPage = lazy(() => import("@/pages/help-page").then((m) => ({ default: m.HelpPage })));
 const LoginPage = lazy(() => import("@/pages/login-page").then((m) => ({ default: m.LoginPage })));
 
@@ -128,6 +129,14 @@ export default function App() {
             element={
               <SuspensePage>
                 <ProductPage />
+              </SuspensePage>
+            }
+          />
+          <Route
+            path="vendor-products/:id"
+            element={
+              <SuspensePage>
+                <VendorProductPage />
               </SuspensePage>
             }
           />

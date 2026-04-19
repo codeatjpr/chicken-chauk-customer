@@ -6,6 +6,17 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CartLineControls } from "@/components/molecules/cart-line-controls";
 import { ProductCard } from "@/components/molecules/product-card";
 import { VendorCard } from "@/components/molecules/vendor-card";
 import { BannerCarousel } from "@/components/organisms/banner-carousel";
@@ -15,14 +26,14 @@ import { SiteFooter } from "@/components/organisms/site-footer";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { queryKeys } from "@/constants/query-keys";
-import { categoryPath, productPath, ROUTES } from "@/constants/routes";
+import { categoryPath, vendorProductPath, ROUTES } from "@/constants/routes";
 import { useToggleFavorite } from "@/hooks/use-toggle-favorite";
+import { useVendorCartActions } from "@/hooks/use-vendor-cart-actions";
 import { cn } from "@/lib/utils";
 import { fetchDiscoveryProducts, fetchHomeScreen } from "@/services/discovery.service";
 import { fetchNearbyVendors } from "@/services/vendors.service";
 import { selectIsAuthenticated, useAuthStore } from "@/stores/auth-store";
 import { useLocationStore } from "@/stores/location-store";
-import { formatVariantWeightAndUnit } from "@/utils/variant-display";
 import { useState } from "react";
 
 export function HomePage() {
@@ -32,6 +43,18 @@ export function HomePage() {
   const [locOpen, setLocOpen] = useState(false);
   const fav = useToggleFavorite();
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    cart,
+    addWithSwitch,
+    switchOpen,
+    setSwitchOpen,
+    confirmVendorSwitch,
+    addIsPending,
+    updateIsPending,
+    updateQty,
+    removeLine,
+  } = useVendorCartActions();
   const locationLabel = displayLabel || city;
 
   const homeQuery = useQuery({
@@ -243,7 +266,7 @@ export function HomePage() {
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold tracking-tight lg:text-lg">Popular in {locationLabel}</h2>
-            <p className="text-muted-foreground mt-0.5 text-xs">Live offers from active vendors near you</p>
+            <p className="text-muted-foreground mt-0.5 text-xs">Tap any item to see full details and add to cart</p>
           </div>
           <Link to={ROUTES.browse} className="text-primary inline-flex items-center gap-1 text-sm font-semibold">
             View all
@@ -258,22 +281,31 @@ export function HomePage() {
             {featuredProducts.map((product) => (
               <ProductCard
                 key={product.id}
-                to={productPath(product.product.id)}
+                to={vendorProductPath(product.id)}
                 name={product.product.name}
                 imageUrl={product.imageUrl ?? product.product.imageUrl}
                 description={product.product.description}
                 categoryName={product.product.category?.name}
-                unit={
-                  product.variant
-                    ? formatVariantWeightAndUnit(product.variant.weight, product.variant.unit)
-                    : product.product.unit
-                }
+                unit={product.quantityUnit ?? ''}
                 vendorName={product.vendor.name}
                 price={product.price}
                 mrp={product.mrp}
                 favoriteProductId={authed ? product.product.id : undefined}
                 eyebrow="Area offer"
                 badges={!product.vendor.isOpen ? ["Vendor closed"] : []}
+                cartAction={
+                  <CartLineControls
+                    cart={cart}
+                    vendorProductId={product.id}
+                    maxQty={product.stock ?? 999}
+                    isAvailable={product.isAvailable && product.vendor.isOpen}
+                    isAdding={addIsPending}
+                    isUpdating={updateIsPending}
+                    onAdd={(qty) => addWithSwitch(product.vendor.id, product.id, qty)}
+                    onUpdateQty={updateQty}
+                    onRemove={removeLine}
+                  />
+                }
               />
             ))}
           </ProductGrid>
@@ -359,6 +391,23 @@ export function HomePage() {
       </section>
 
       <SiteFooter locationLabel={locationLabel} />
+
+      <AlertDialog open={switchOpen} onOpenChange={setSwitchOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start a new cart?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your cart has items from another vendor. Continuing will clear your current cart.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmVendorSwitch()}>
+              Clear and continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }

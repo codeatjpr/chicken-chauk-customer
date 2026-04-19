@@ -2,6 +2,17 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { Compass, Search, Store } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { CartLineControls } from '@/components/molecules/cart-line-controls'
 import { EmptyState } from '@/components/molecules/empty-state'
 import { ProductCard } from '@/components/molecules/product-card'
 import { VendorCard } from '@/components/molecules/vendor-card'
@@ -9,14 +20,14 @@ import { ProductGrid, ProductGridSkeleton } from '@/components/organisms/product
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { productPath, ROUTES } from '@/constants/routes'
+import { vendorProductPath, ROUTES } from '@/constants/routes'
 import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 import { useDebounceValue } from '@/hooks/use-debounce-value'
 import { useToggleFavorite } from '@/hooks/use-toggle-favorite'
+import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
 import { useLocationStore } from '@/stores/location-store'
 import type { ProductSearchHit, VendorSearchHit } from '@/types/discovery'
-import { formatVariantWeightAndUnit } from '@/utils/variant-display'
 
 export function SearchPage() {
   const navigate = useNavigate()
@@ -28,6 +39,18 @@ export function SearchPage() {
   const { city } = useLocationStore()
   const fav = useToggleFavorite()
   const loadMoreRef = useRef<HTMLDivElement>(null)
+
+  const {
+    cart,
+    addWithSwitch,
+    switchOpen,
+    setSwitchOpen,
+    confirmVendorSwitch,
+    addIsPending,
+    updateIsPending,
+    updateQty,
+    removeLine,
+  } = useVendorCartActions()
 
   useEffect(() => {
     setDraft(urlQ)
@@ -216,7 +239,7 @@ export function SearchPage() {
                     Product offers
                   </h2>
                   <p className="text-muted-foreground text-sm">
-                    Compare current vendor pricing and jump into a full detail view.
+                    Tap any listing to view full details and add to cart.
                   </p>
                 </div>
                 <span className="text-muted-foreground hidden items-center gap-2 text-sm sm:inline-flex">
@@ -225,23 +248,22 @@ export function SearchPage() {
                 </span>
               </div>
               <ProductGrid className="xl:grid-cols-2">
-                {products.map((hit) => (
+                {products.map((hit) => {
+                  const qtyParts = [
+                    hit.quantityValue ? `${hit.quantityValue}${hit.quantityUnit ?? ''}` : null,
+                    hit.pieces ?? null,
+                    hit.servings ?? null,
+                  ].filter(Boolean)
+                  return (
                   <ProductCard
                     key={hit.id}
-                    to={productPath(hit.product.id)}
+                    to={vendorProductPath(hit.id)}
                     favoriteProductId={hit.product.id}
                     name={hit.product.name}
                     imageUrl={hit.imageUrl ?? hit.product.imageUrl}
                     description={hit.product.description}
                     categoryName={hit.product.category?.name}
-                    unit={
-                      hit.variant
-                        ? formatVariantWeightAndUnit(
-                            hit.variant.weight,
-                            hit.variant.unit,
-                          )
-                        : hit.product.unit
-                    }
+                    unit={hit.quantityUnit ?? ''}
                     vendorName={hit.vendor.name}
                     price={hit.price}
                     mrp={hit.mrp}
@@ -249,11 +271,25 @@ export function SearchPage() {
                     badges={!hit.vendor.isOpen ? ['Vendor closed'] : []}
                     meta={
                       <p className="text-muted-foreground text-xs">
-                        {hit.vendor.rating.toFixed(1)} rating
+                        {[hit.vendor.rating.toFixed(1) + ' rating', ...qtyParts].join(' · ')}
                       </p>
                     }
+                    cartAction={
+                      <CartLineControls
+                        cart={cart}
+                        vendorProductId={hit.id}
+                        maxQty={hit.stock ?? 999}
+                        isAvailable={hit.isAvailable && hit.vendor.isOpen}
+                        isAdding={addIsPending}
+                        isUpdating={updateIsPending}
+                        onAdd={(qty) => addWithSwitch(hit.vendor.id, hit.id, qty)}
+                        onUpdateQty={updateQty}
+                        onRemove={removeLine}
+                      />
+                    }
                   />
-                ))}
+                )})}
+
               </ProductGrid>
             </section>
           )}
@@ -272,6 +308,23 @@ export function SearchPage() {
           Back to home
         </Link>
       </p>
+
+      <AlertDialog open={switchOpen} onOpenChange={setSwitchOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start a new cart?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your cart has items from another vendor. Continuing will clear your current cart.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmVendorSwitch()}>
+              Clear and continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

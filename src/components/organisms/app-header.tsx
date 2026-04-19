@@ -281,9 +281,8 @@ export function AppHeader() {
           </DropdownMenu>
         </div>
 
-        {/* ── Mobile: Right actions ── */}
+        {/* ── Mobile: Right actions (cart + profile live in bottom dock) ── */}
         <div className="flex items-center gap-0.5 lg:hidden">
-          {/* Notifications */}
           <Link
             to={ROUTES.notifications}
             className="relative flex size-9 items-center justify-center rounded-xl transition-colors hover:bg-muted"
@@ -295,40 +294,12 @@ export function AppHeader() {
             )}
           </Link>
 
-          {/* Favorites */}
           <Link
             to={ROUTES.favorites}
             className="flex size-9 items-center justify-center rounded-xl transition-colors hover:bg-muted"
             aria-label="Favorites"
           >
             <Heart className="size-[18px]" />
-          </Link>
-
-          {/* Cart */}
-          <Link
-            to={ROUTES.cart}
-            className="relative flex size-9 items-center justify-center rounded-xl transition-colors hover:bg-muted"
-            aria-label={`Cart${cartCount ? `, ${cartCount} items` : ''}`}
-          >
-            <ShoppingCart className="size-[18px]" />
-            {cartCount > 0 && (
-              <span className="bg-primary text-primary-foreground absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-[18px]">
-                {cartCount > 99 ? '99+' : cartCount}
-              </span>
-            )}
-          </Link>
-
-          {/* Account */}
-          <Link
-            to={authed ? ROUTES.profile : ROUTES.login}
-            className={cn(
-              'flex size-9 items-center justify-center rounded-xl text-sm font-semibold transition-colors',
-              authed
-                ? 'text-primary hover:bg-primary/10'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90',
-            )}
-          >
-            <User className="size-[18px]" />
           </Link>
         </div>
       </div>

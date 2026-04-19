@@ -26,8 +26,6 @@ export const queryKeys = {
       [...root, 'catalog', 'products', categoryId] as const,
     productsAll: [...root, 'catalog', 'products', 'all'] as const,
     product: (id: string) => [...root, 'catalog', 'product', id] as const,
-    productVariants: (id: string) =>
-      [...root, 'catalog', 'product', id, 'variants'] as const,
     vendorProducts: (
       vendorId: string,
       categoryId?: string,
@@ -41,6 +39,7 @@ export const queryKeys = {
         categoryId ?? 'all',
         search ?? '',
       ] as const,
+    vendorProduct: (id: string) => [...root, 'catalog', 'vendor-product', id] as const,
   },
   cart: {
     summary: [...root, 'cart'] as const,

@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { productPath } from '@/constants/routes'
+import { vendorProductPath } from '@/constants/routes'
 import { useDebounceValue } from '@/hooks/use-debounce-value'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import { fetchVendorProducts } from '@/services/catalog.service'
@@ -36,7 +36,6 @@ import * as ratingsApi from '@/services/ratings.service'
 import { fetchVendorById } from '@/services/vendors.service'
 import type { VendorProductDto } from '@/types/catalog'
 import { formatInr } from '@/utils/format'
-import { formatVariantNameWithWeight } from '@/utils/variant-display'
 import { cn } from '@/lib/utils'
 
 type CategoryTab = { id: string; name: string }
@@ -50,15 +49,6 @@ function groupByCategory(items: VendorProductDto[]) {
     map.get(cid)!.items.push(row)
   }
   return [...map.entries()].map(([id, value]) => ({ id, ...value }))
-}
-
-function formatVariantLabel(row: VendorProductDto) {
-  if (!row.variant) return null
-  return formatVariantNameWithWeight(
-    row.variant.name,
-    row.variant.weight,
-    row.variant.unit,
-  )
 }
 
 export function VendorPage() {
@@ -273,12 +263,11 @@ export function VendorPage() {
                     <CommerceProductCard
                       key={row.id}
                       name={row.product.name}
-                      href={productPath(row.product.id)}
+                      href={vendorProductPath(row.id)}
                       imageUrl={row.imageUrl ?? row.product.imageUrl}
                       description={row.product.description}
                       categoryName={row.product.category?.name}
-                      unit={row.product.unit}
-                      variantLabel={formatVariantLabel(row) ?? undefined}
+                      unit={row.quantityUnit ?? ''}
                       price={row.price}
                       mrp={row.mrp}
                       availabilityLabel={row.isAvailable && vendor?.isOpen ? 'Available' : 'Closed'}
@@ -318,7 +307,7 @@ export function VendorPage() {
       </div>
 
       {showSticky ? (
-        <div className="border-border/80 bg-background/95 fixed inset-x-0 bottom-16 z-20 flex items-center justify-between gap-3 border-t px-3 py-3 backdrop-blur-md lg:hidden">
+        <div className="border-border/80 bg-background/95 fixed inset-x-0 bottom-42 z-20 flex items-center justify-between gap-3 border-t px-3 py-3 backdrop-blur-md lg:hidden">
           <div className="min-w-0">
             <p className="text-muted-foreground truncate text-xs">{cart.vendorName}</p>
             <p className="font-semibold tabular-nums">{formatInr(cart.estimatedTotal)}</p>

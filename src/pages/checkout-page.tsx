@@ -12,13 +12,23 @@ import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AddAddressDialog } from '@/components/organisms/add-address-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { orderPath, ROUTES, vendorPath } from '@/constants/routes'
+import { orderTrackingPath, ROUTES, vendorPath } from '@/constants/routes'
 import { useCartQuery } from '@/hooks/use-cart'
 import * as addressesApi from '@/services/addresses.service'
 import { validateCartForCheckout } from '@/services/cart.service'
@@ -48,6 +58,9 @@ export function CheckoutPage() {
   const [couponPreview, setCouponPreview] = useState<CouponValidationResultDto | null>(null)
   const [walletToUse, setWalletToUse] = useState('')
   const [instructions, setInstructions] = useState('')
+
+  const [reviewOrderOpen, setReviewOrderOpen] = useState(false)
+  const [paymentGateOpen, setPaymentGateOpen] = useState(false)
 
   const addressesQuery = useQuery({
     queryKey: queryKeys.addresses.list,
@@ -155,7 +168,7 @@ export function CheckoutPage() {
       void qc.invalidateQueries({ queryKey: queryKeys.orders.prefix })
       void qc.invalidateQueries({ queryKey: queryKeys.wallet.summary })
       toast.success('Order placed')
-      navigate(orderPath(order.id), { replace: true })
+      navigate(orderTrackingPath(order.id), { replace: true })
     },
     onError: (e) => toast.error(getApiErrorMessage(e, 'Could not place order')),
   })
@@ -519,7 +532,7 @@ export function CheckoutPage() {
                 className="w-full gap-2"
                 size="lg"
                 disabled={placeOrder.isPending || !selectedAddressId || addresses.length === 0}
-                onClick={() => placeOrder.mutate()}
+                onClick={() => setReviewOrderOpen(true)}
               >
                 {placeOrder.isPending && <Loader2Icon className="size-4 animate-spin" />}
                 Place order
@@ -537,6 +550,80 @@ export function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={reviewOrderOpen} onOpenChange={setReviewOrderOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm your order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="block">
+                You are ordering from <strong>{cart.vendorName}</strong>
+                {summary ? (
+                  <>
+                    {' '}
+                    · total{' '}
+                    <strong>
+                      {formatInr(summary.hasValidatedTotals ? summary.totalPayable : summary.estimatedTotal)}
+                    </strong>
+                  </>
+                ) : null}
+                .
+              </span>
+              <span className="text-muted-foreground mt-2 block text-xs">
+                Payment: <strong>{PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.label}</strong>
+                {paymentMethod === 'COD'
+                  ? ' — pay when the order arrives.'
+                  : ' — the order is only submitted after you confirm payment on the next step.'}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={placeOrder.isPending}
+              onClick={() => {
+                setReviewOrderOpen(false)
+                if (paymentMethod === 'COD') {
+                  placeOrder.mutate()
+                } else {
+                  setPaymentGateOpen(true)
+                }
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={paymentGateOpen} onOpenChange={setPaymentGateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete payment first</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="block">
+                For <strong>{PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.label}</strong>, complete payment for{' '}
+                <strong>{summary ? formatInr(summary.totalPayable) : '—'}</strong>, then tap below to place the order.
+              </span>
+              <span className="text-muted-foreground mt-2 block text-xs">
+                Until you confirm, the order is not placed and stock is not reserved.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={placeOrder.isPending}
+              onClick={() => {
+                setPaymentGateOpen(false)
+                placeOrder.mutate()
+              }}
+            >
+              I have paid — place order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AddAddressDialog
         open={addressOpen}
