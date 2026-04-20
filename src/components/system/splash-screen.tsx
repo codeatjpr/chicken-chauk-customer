@@ -17,7 +17,7 @@ function initialPhase(): 'show' | 'gone' {
 
 /**
  * Full-screen launch splash (mobile browser + PWA standalone + desktop).
- * Shown once per tab session; uses your logo from /favicon.svg.
+ * Shown once per tab session; uses the same mark as tab favicon (/favicon.png).
  * Native iOS/Android PWA splash still comes from manifest icons; this runs after JS loads.
  */
 export function SplashScreen() {
@@ -72,7 +72,7 @@ export function SplashScreen() {
       <div className="flex max-w-sm flex-col items-center gap-6 text-center">
         <div className="ring-primary/15 rounded-3xl bg-white/5 p-5 ring-1 ring-inset">
           <img
-            src="/favicon.svg"
+            src="/favicon.png"
             alt=""
             width={120}
             height={120}

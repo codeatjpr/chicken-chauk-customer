@@ -28,7 +28,7 @@ export function MainLayout() {
         </main>
       </div>
       <MobileFloatingDock />
-      <PwaInstallPrompt />
+      <PwaInstallPrompt layout="main" />
     </div>
   )
 }

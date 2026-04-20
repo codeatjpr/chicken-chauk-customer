@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { BrowserRouter } from 'react-router-dom'
 import { AppErrorFallback } from '@/components/system/app-error-fallback'
+import { DocumentTitleSync } from '@/components/system/document-title-sync'
 import { SplashScreen } from '@/components/system/splash-screen'
 import { Toaster } from '@/components/ui/sonner'
 import { createQueryClient } from '@/lib/query-client'
@@ -29,6 +30,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         >
           <BrowserRouter>
             <I18nProvider>
+              <DocumentTitleSync />
               <SplashScreen />
               <div
                 id="a11y-live-polite"

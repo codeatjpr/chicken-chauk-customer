@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       // Precache favicons + PWA icons (public/). Matches RealFaviconGenerator output filenames.
       includeAssets: [
-        "favicon.svg",
         "favicon.ico",
+        "favicon.png",
         "favicon-96x96.png",
         "apple-touch-icon.png",
         "web-app-manifest-192x192.png",
@@ -31,6 +31,9 @@ export default defineConfig({
         start_url: "/",
         id: "/",
         lang: "en",
+        dir: "ltr",
+        categories: ["food", "shopping"],
+        prefer_related_applications: false,
         icons: [
           {
             src: "/web-app-manifest-192x192.png",

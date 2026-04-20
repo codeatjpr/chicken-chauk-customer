@@ -2,87 +2,92 @@ import { useCallback, useEffect, useState } from 'react'
 import { Download, Share2, X } from 'lucide-react'
 import { useI18n } from '@/hooks/use-i18n'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-const DISMISS_KEY = 'pwa-install-dismissed'
+const LS_NEVER = 'pwa-install-never'
+const SS_DISMISS = 'pwa-install-dismiss-session'
+
+type PwaInstallPromptProps = {
+  /** `main`: clears mobile dock (`bottom-24`). `landing`: no dock, sit lower. */
+  layout?: 'main' | 'landing'
+}
 
 function isStandalone(): boolean {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
     window.matchMedia('(display-mode: fullscreen)').matches ||
-    // iOS Safari added-to-home
-    ((window.navigator as Navigator & { standalone?: boolean }).standalone === true)
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   )
 }
 
-function isIosSafari(): boolean {
+/** iPhone / iPod / iPad — all browsers use “Add to Home Screen” via Share (no beforeinstallprompt). */
+function isAppleMobile(): boolean {
   const ua = window.navigator.userAgent
-  const iOS = /iPad|iPhone|iPod/.test(ua)
-  const webkit = /WebKit/.test(ua)
-  return iOS && webkit && !/CriOS|FxiOS|EdgiOS/.test(ua)
+  const isIpadOs =
+    window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1
+  return /iPad|iPhone|iPod/.test(ua) || isIpadOs
 }
 
-const IOS_HINT_KEY = 'pwa-ios-hint-shown'
+function isAndroid(): boolean {
+  return /Android/i.test(window.navigator.userAgent)
+}
 
-/** iOS has no beforeinstallprompt — one-time hint uses lazy state, not setState in an effect. */
-function shouldShowIosHintInitially(): boolean {
+function readNever(): boolean {
   try {
-    if (isStandalone()) return false
-    if (sessionStorage.getItem(DISMISS_KEY) === '1') return false
-    if (!isIosSafari()) return false
-    if (sessionStorage.getItem(IOS_HINT_KEY)) return false
-    return true
+    return localStorage.getItem(LS_NEVER) === '1'
   } catch {
     return false
   }
 }
 
-export function PwaInstallPrompt() {
+function readSessionDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(SS_DISMISS) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function PwaInstallPrompt({ layout = 'main' }: PwaInstallPromptProps) {
   const { t } = useI18n()
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showIosHint, setShowIosHint] = useState(shouldShowIosHintInitially)
-  const [dismissed, setDismissed] = useState(() => {
-    try {
-      return sessionStorage.getItem(DISMISS_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
+  const [neverAgain, setNeverAgain] = useState(readNever)
+  const [sessionDismissed, setSessionDismissed] = useState(readSessionDismissed)
 
   useEffect(() => {
-    if (isStandalone() || dismissed) return
+    if (isStandalone() || neverAgain || sessionDismissed) return
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault()
       setDeferred(e as BeforeInstallPromptEvent)
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
-
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
-  }, [dismissed])
+  }, [neverAgain, sessionDismissed])
 
-  const dismiss = useCallback(() => {
+  const dismissSession = useCallback(() => {
     try {
-      sessionStorage.setItem(DISMISS_KEY, '1')
+      sessionStorage.setItem(SS_DISMISS, '1')
     } catch {
       /* ignore */
     }
-    setDismissed(true)
+    setSessionDismissed(true)
     setDeferred(null)
-    setShowIosHint(false)
   }, [])
 
-  const dismissIosHint = useCallback(() => {
+  const dismissForever = useCallback(() => {
     try {
-      sessionStorage.setItem(IOS_HINT_KEY, '1')
+      localStorage.setItem(LS_NEVER, '1')
     } catch {
       /* ignore */
     }
-    setShowIosHint(false)
+    setNeverAgain(true)
+    setDeferred(null)
   }, [])
 
   const onInstallClick = useCallback(async () => {
@@ -92,63 +97,73 @@ export function PwaInstallPrompt() {
     setDeferred(null)
   }, [deferred])
 
-  if (isStandalone() || dismissed) return null
+  if (isStandalone() || neverAgain || sessionDismissed) return null
 
-  if (deferred) {
-    return (
-      <div
-        role="region"
-        aria-label={t('pwa.install.region')}
-        className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 fixed right-3 bottom-24 left-3 z-50 flex max-w-md flex-col gap-2 rounded-xl border p-3 shadow-lg backdrop-blur sm:left-auto sm:w-full"
-      >
-        <div className="flex items-start gap-2">
+  const appleMobile = isAppleMobile()
+  const android = isAndroid()
+
+  const bodyKey = deferred
+    ? 'pwa.body.withPrompt'
+    : appleMobile
+      ? 'pwa.body.ios'
+      : android
+        ? 'pwa.body.android'
+        : 'pwa.body.desktop'
+
+  const bottomClass = layout === 'main' ? 'bottom-24' : 'bottom-6'
+
+  return (
+    <div
+      role="region"
+      aria-label={t('pwa.region')}
+      className={cn(
+        'border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 fixed right-3 left-3 z-50 flex max-w-md flex-col gap-3 rounded-xl border p-3 shadow-lg backdrop-blur sm:left-auto sm:w-full',
+        bottomClass,
+      )}
+    >
+      <div className="flex items-start gap-2">
+        {appleMobile ? (
+          <Share2 className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
+        ) : (
           <Download className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
-          <p className="text-sm leading-snug">{t('pwa.install.body')}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="shrink-0 -mr-1 -mt-1"
-            onClick={dismiss}
-            aria-label={t('pwa.install.dismiss')}
-          >
-            <X className="size-4" />
-          </Button>
+        )}
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-semibold leading-snug">{t('pwa.title')}</p>
+          <p className="text-muted-foreground text-sm leading-snug">{t(bodyKey)}</p>
         </div>
-        <div className="flex flex-wrap gap-2 pl-7">
-          <Button type="button" size="sm" onClick={() => void onInstallClick()}>
-            {t('pwa.install.cta')}
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={dismiss}>
-            {t('pwa.install.notNow')}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (showIosHint) {
-    return (
-      <div
-        role="region"
-        aria-label={t('pwa.ios.region')}
-        className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 fixed right-3 bottom-24 left-3 z-50 flex max-w-md items-start gap-2 rounded-xl border p-3 shadow-lg backdrop-blur sm:left-auto sm:w-full"
-      >
-        <Share2 className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
-        <p className="text-sm leading-snug">{t('pwa.ios.body')}</p>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
           className="shrink-0 -mr-1 -mt-1"
-          onClick={dismissIosHint}
-          aria-label={t('pwa.install.dismiss')}
+          onClick={dismissSession}
+          aria-label={t('pwa.dismiss')}
         >
           <X className="size-4" />
         </Button>
       </div>
-    )
-  }
 
-  return null
+      <div className="flex flex-wrap items-center gap-2 pl-0 sm:pl-7">
+        {deferred ? (
+          <Button type="button" size="sm" onClick={() => void onInstallClick()}>
+            {t('pwa.cta.install')}
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="secondary" onClick={dismissSession}>
+            {t('pwa.cta.gotIt')}
+          </Button>
+        )}
+        <Button type="button" size="sm" variant="outline" onClick={dismissSession}>
+          {t('pwa.notNow')}
+        </Button>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground ml-auto text-xs underline-offset-2 hover:underline"
+          onClick={dismissForever}
+        >
+          {t('pwa.neverAgain')}
+        </button>
+      </div>
+    </div>
+  )
 }

@@ -6,7 +6,11 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    /** Vite PWA / Workbox output — third-party bundle with inline eslint-disable for TS rules */
+    'dev-dist',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

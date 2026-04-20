@@ -10,6 +10,7 @@ import { ProductCard } from '@/components/molecules/product-card'
 import { VendorCard } from '@/components/molecules/vendor-card'
 import { ProductGrid } from '@/components/organisms/product-grid'
 import { SiteFooter } from '@/components/organisms/site-footer'
+import { PwaInstallPrompt } from '@/components/system/pwa-install-prompt'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -394,6 +395,7 @@ export function LandingPage() {
           <SiteFooter locationLabel={locationLabel} />
         </div>
       </main>
+      <PwaInstallPrompt layout="landing" />
     </div>
   )
 }
