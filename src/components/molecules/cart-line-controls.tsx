@@ -40,12 +40,11 @@ export function CartLineControls({
       <Button
         type="button"
         size="sm"
-        className="size-8 rounded-full p-0"
+        className="h-8 shrink-0 px-2.5 text-[11px] font-semibold sm:px-3 sm:text-xs"
         disabled={isAdding || maxQty < 1}
-        aria-label="Add to cart"
         onClick={() => onAdd(1)}
       >
-        <Plus className="size-4" />
+        Add to cart
       </Button>
     )
   }

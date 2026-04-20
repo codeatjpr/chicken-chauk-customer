@@ -54,32 +54,25 @@ function FloatingCartPill() {
 }
 
 function FloatingCartFab() {
-  const location = useLocation();
   const { data: cart } = useCartQuery();
-  const authed = useAuthStore(selectIsAuthenticated);
   const count = cart?.totalQuantity ?? 0;
-  const to = authed ? ROUTES.cart : ROUTES.login;
-  const loginState = {
-    from: `${location.pathname}${location.search}${location.hash}`,
-  };
 
   return (
     <Link
-      to={to}
-      {...(!authed ? { state: loginState } : {})}
+      to={ROUTES.cart}
       className={cn(
         "border-background from-card to-muted/40 text-primary ring-background/80",
         "relative flex size-14 shrink-0 items-center justify-center rounded-full border-4 bg-linear-to-b shadow-lg",
         "transition hover:shadow-xl hover:brightness-[1.02] active:scale-95",
       )}
-      aria-label={authed ? `Open cart${count ? `, ${count} items` : ""}` : "Sign in to view cart"}>
+      aria-label={`Open cart${count ? `, ${count} items` : ""}`}>
       <span className="pointer-events-none absolute inset-2" aria-hidden />
       <ShoppingCart
         className="relative z-10 size-7 stroke-[2.1] text-primary"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {authed && count > 0 && (
+      {count > 0 && (
         <span className="bg-primary text-primary-foreground absolute -right-0.5 -top-0.5 flex items-center justify-center rounded-full border-2 border-background p-.5 px-1 text-[10px] font-bold leading-none shadow-sm">
           {count > 99 ? "99+" : count}
         </span>

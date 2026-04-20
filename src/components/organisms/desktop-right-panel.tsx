@@ -140,7 +140,7 @@ export function DesktopRightPanel() {
               <LoginFlow onSuccess={() => openPanel(panelTab)} />
             </div>
           ) : panelTab === 'cart' ? (
-            <CartTabContent cart={cart} cartLoading={cartLoading} authed={authed} />
+            <CartTabContent cart={cart} cartLoading={cartLoading} />
           ) : panelTab === 'orders' ? (
             <OrdersTabContent orders={ordersQuery.data?.items} isLoading={ordersQuery.isLoading} onGoTo={goTo} />
           ) : panelTab === 'notifications' ? (
@@ -161,26 +161,10 @@ export function DesktopRightPanel() {
 function CartTabContent({
   cart,
   cartLoading,
-  authed,
 }: {
   cart: ReturnType<typeof useCartQuery>['data']
   cartLoading: boolean
-  authed: boolean
 }) {
-  if (!authed) {
-    return (
-      <div className="space-y-6 p-6">
-        <div>
-          <h2 className="font-heading text-lg font-semibold">Your cart</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Sign in to add items and checkout.
-          </p>
-        </div>
-        <LoginFlow onSuccess={() => {}} />
-      </div>
-    )
-  }
-
   return (
     <div className="p-4">
       <CartPanel cart={cart} isLoading={cartLoading} />

@@ -9,8 +9,10 @@ import { useCartQuery } from '@/hooks/use-cart'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import { formatInr } from '@/utils/format'
 import { cn } from '@/lib/utils'
+import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 
 export function CartPage() {
+  const authed = useAuthStore(selectIsAuthenticated)
   const { data: cart, isLoading } = useCartQuery()
   const { addIsPending, updateIsPending, updateQty, removeLine, addWithSwitch } =
     useVendorCartActions()
@@ -174,15 +176,27 @@ export function CartPage() {
               <span className="tabular-nums">{formatInr(cart.estimatedTotal)}</span>
             </div>
 
-            <Link
-              to={ROUTES.checkout}
-              className={cn(buttonVariants({ size: 'lg' }), 'mt-5 flex w-full justify-center')}
-            >
-              Proceed to checkout
-            </Link>
+            {authed ? (
+              <Link
+                to={ROUTES.checkout}
+                className={cn(buttonVariants({ size: 'lg' }), 'mt-5 flex w-full justify-center')}
+              >
+                Proceed to checkout
+              </Link>
+            ) : (
+              <Link
+                to={ROUTES.login}
+                state={{ from: ROUTES.checkout }}
+                className={cn(buttonVariants({ size: 'lg' }), 'mt-5 flex w-full justify-center')}
+              >
+                Sign in to checkout
+              </Link>
+            )}
 
             <p className="text-muted-foreground mt-3 text-center text-xs">
-              Taxes and final delivery fee calculated at checkout.
+              {authed
+                ? 'Taxes and final delivery fee calculated at checkout.'
+                : 'Sign in to place your order. Your cart is saved on this device until then.'}
             </p>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ROUTES } from '@/constants/routes'
+import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 import type { CartSummaryDto } from '@/types/cart'
 import { formatInr } from '@/utils/format'
@@ -20,6 +21,8 @@ export function CartPanel({
   showCheckout = true,
   onCheckout,
 }: CartPanelProps) {
+  const authed = useAuthStore(selectIsAuthenticated)
+
   if (isLoading) {
     return (
       <div className="space-y-3 p-1">
@@ -103,12 +106,22 @@ export function CartPanel({
       </div>
       {showCheckout && (
         <div className="flex flex-col gap-2">
-          <Link
-            to={ROUTES.checkout}
-            className={cn(buttonVariants(), 'w-full justify-center')}
-          >
-            Checkout
-          </Link>
+          {authed ? (
+            <Link
+              to={ROUTES.checkout}
+              className={cn(buttonVariants(), 'w-full justify-center')}
+            >
+              Checkout
+            </Link>
+          ) : (
+            <Link
+              to={ROUTES.login}
+              state={{ from: ROUTES.checkout }}
+              className={cn(buttonVariants(), 'w-full justify-center')}
+            >
+              Sign in to checkout
+            </Link>
+          )}
           <Link
             to={ROUTES.cart}
             className={cn(

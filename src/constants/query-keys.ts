@@ -43,6 +43,7 @@ export const queryKeys = {
   },
   cart: {
     summary: [...root, 'cart'] as const,
+    guestSummary: [...root, 'cart', 'guest'] as const,
   },
   addresses: {
     list: [...root, 'addresses'] as const,
@@ -69,6 +70,25 @@ export const queryKeys = {
       [...root, 'delivery', 'order', orderId] as const,
     riderLocation: (riderId: string) =>
       [...root, 'delivery', 'rider-location', riderId] as const,
+  },
+  maps: {
+    drivingRoute: (
+      deliveryId: string,
+      originLat: number | undefined,
+      originLng: number | undefined,
+      destLat: number | undefined,
+      destLng: number | undefined,
+    ) =>
+      [
+        ...root,
+        'maps',
+        'driving-route',
+        deliveryId,
+        originLat ?? '_',
+        originLng ?? '_',
+        destLat ?? '_',
+        destLng ?? '_',
+      ] as const,
   },
   wallet: {
     summary: [...root, 'wallet', 'summary'] as const,

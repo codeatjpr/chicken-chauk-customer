@@ -212,10 +212,7 @@ export function HomePage() {
       {/* ── Nearby vendors ── */}
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold tracking-tight lg:text-lg">Stores near you</h2>
-            <p className="text-muted-foreground mt-0.5 text-xs">{locationLabel}</p>
-          </div>
+          <h2 className="font-semibold tracking-tight lg:text-lg">Stores near you</h2>
           <Link to={ROUTES.search} className="text-primary inline-flex items-center gap-1 text-sm font-semibold">
             See all
             <ArrowRight className="size-3.5" />
@@ -265,7 +262,7 @@ export function HomePage() {
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold tracking-tight lg:text-lg">Popular in {locationLabel}</h2>
+            <h2 className="font-semibold tracking-tight lg:text-lg">Popular items in your area</h2>
             <p className="text-muted-foreground mt-0.5 text-xs">Tap any item to see full details and add to cart</p>
           </div>
           <Link to={ROUTES.browse} className="text-primary inline-flex items-center gap-1 text-sm font-semibold">

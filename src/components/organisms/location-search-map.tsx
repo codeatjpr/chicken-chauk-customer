@@ -1,210 +1,93 @@
-import L from 'leaflet'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-import 'leaflet/dist/leaflet.css'
-import { Crosshair, Loader2, MapPin, Search } from 'lucide-react'
+﻿import { Crosshair, Loader2, MapPin, Search, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  fetchPlaceAutocomplete,
+  fetchPlaceDetails,
+  placeDetailsToSelection,
+  reverseGeocodeLatLng,
+  type AutocompleteHit,
+} from '@/lib/google-places-client'
+import { splitLocationDisplay } from '@/lib/location-label'
 import { cn } from '@/lib/utils'
+import type { LocationSelection } from '@/types/location'
 
-const DEFAULT_CENTER: L.LatLngTuple = [28.6139, 77.209]
-const NOMINATIM_MIN_INTERVAL_MS = 1100
+export type { LocationSelection } from '@/types/location'
 
-const pinIcon = L.icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  shadowAnchor: [12, 41],
-  popupAnchor: [1, -34],
-})
+const DEBOUNCE_MS = 320
+const MIN_INPUT_LEN = 2
 
-type NominatimAddress = {
-  city?: string
-  town?: string
-  village?: string
-  municipality?: string
-  county?: string
-  state?: string
-  state_district?: string
-  postcode?: string
-  suburb?: string
-  neighbourhood?: string
-  road?: string
-  hamlet?: string
+function splitSuggestionLabel(label: string): { title: string; subtitle: string | null } {
+  const idx = label.indexOf(',')
+  if (idx === -1) return { title: label.trim(), subtitle: null }
+  const title = label.slice(0, idx).trim()
+  const subtitle = label.slice(idx + 1).trim() || null
+  return { title: title || label.trim(), subtitle }
 }
 
-type NominatimHit = {
-  display_name: string
-  lat: string
-  lon: string
-  address?: NominatimAddress
-}
-
-type NominatimReverseHit = {
-  display_name: string
-  lat: string
-  lon: string
-  address?: NominatimAddress
-}
-
-export type LocationSelection = {
-  latitude: number
-  longitude: number
-  displayName: string
-  city?: string
-  state?: string
-  pincode?: string
-  area?: string
-}
-
-type LocationSearchMapProps = {
+type LocationSearchInnerProps = {
+  apiKey: string
   latitude: number
   longitude: number
   onPick: (selection: LocationSelection) => void
   initialSearchText?: string
-  height?: number
+  initialSelectedSummary?: string
+  /** Hide title, footer, extra chrome — use inside dialogs. */
+  embedded?: boolean
   className?: string
   label?: string
   description?: string
 }
 
-function parseCoords(lat: number, lng: number): L.LatLngTuple | null {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
-  return [lat, lng]
-}
-
-function extractSelection(
-  displayName: string,
-  lat: number,
-  lng: number,
-  address?: NominatimAddress,
-): LocationSelection {
-  const city =
-    address?.city ??
-    address?.town ??
-    address?.village ??
-    address?.municipality ??
-    address?.county
-  const state = address?.state ?? address?.state_district
-  const area =
-    address?.suburb ??
-    address?.neighbourhood ??
-    address?.road ??
-    address?.hamlet ??
-    city
-
-  return {
-    latitude: lat,
-    longitude: lng,
-    displayName,
-    city,
-    state,
-    pincode: address?.postcode,
-    area,
-  }
-}
-
-async function searchNominatim(query: string): Promise<NominatimHit[]> {
-  const q = query.trim()
-  if (!q) return []
-
-  const url = new URL('https://nominatim.openstreetmap.org/search')
-  url.searchParams.set('format', 'json')
-  url.searchParams.set('q', q)
-  url.searchParams.set('limit', '8')
-  url.searchParams.set('countrycodes', 'in')
-  url.searchParams.set('addressdetails', '1')
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      'Accept-Language': 'en',
-      'X-Requested-With': 'ChickenChaukCustomer',
-    },
-  })
-  if (!res.ok) throw new Error(`Search failed (${res.status})`)
-  const data = (await res.json()) as NominatimHit[]
-  return Array.isArray(data) ? data : []
-}
-
-async function reverseLookup(lat: number, lng: number): Promise<NominatimReverseHit | null> {
-  const url = new URL('https://nominatim.openstreetmap.org/reverse')
-  url.searchParams.set('format', 'jsonv2')
-  url.searchParams.set('lat', String(lat))
-  url.searchParams.set('lon', String(lng))
-  url.searchParams.set('zoom', '18')
-  url.searchParams.set('addressdetails', '1')
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      'Accept-Language': 'en',
-      'X-Requested-With': 'ChickenChaukCustomer',
-    },
-  })
-  if (!res.ok) throw new Error(`Reverse lookup failed (${res.status})`)
-  const data = (await res.json()) as NominatimReverseHit
-  return data?.display_name ? data : null
-}
-
-export function LocationSearchMap({
+function LocationSearchInner({
+  apiKey,
   latitude,
   longitude,
   onPick,
   initialSearchText = '',
-  height = 300,
+  initialSelectedSummary = '',
+  embedded = false,
   className,
-  label = 'Find location',
-  description = 'Search by area, landmark, city, or pincode, use GPS, or adjust the pin on the map.',
-}: LocationSearchMapProps) {
-  const initialCoordsRef = useRef({ latitude, longitude })
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<L.Map | null>(null)
-  const markerRef = useRef<L.Marker | null>(null)
-  const lastLookupAt = useRef(0)
+  label = 'Your location',
+  description,
+}: LocationSearchInnerProps) {
+  const prevPropsLatLng = useRef({ lat: latitude, lng: longitude })
+  /** Places API (New): token must be URL-safe; 32-char hex avoids INVALID_ARGUMENT on some keys. */
+  const sessionTokenRef = useRef(crypto.randomUUID().replace(/-/g, ''))
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
 
-  const [mapReady, setMapReady] = useState(false)
   const [searchText, setSearchText] = useState(initialSearchText)
-  const [searchHits, setSearchHits] = useState<NominatimHit[]>([])
+  const [searchHits, setSearchHits] = useState<AutocompleteHit[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
-  const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
-  const [selectedLabel, setSelectedLabel] = useState<string>('')
-  const [selectedMeta, setSelectedMeta] = useState<string>('')
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [fullAddress, setFullAddress] = useState(initialSelectedSummary)
   const [lookupLoading, setLookupLoading] = useState(false)
 
-  const waitForRateLimit = useCallback(async () => {
-    const now = Date.now()
-    const wait = NOMINATIM_MIN_INTERVAL_MS - (now - lastLookupAt.current)
-    if (wait > 0) {
-      await new Promise((resolve) => setTimeout(resolve, wait))
+  useEffect(() => {
+    const parsedLat = Number.isFinite(latitude) ? latitude : NaN
+    const parsedLng = Number.isFinite(longitude) ? longitude : NaN
+    if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return
+    const prev = prevPropsLatLng.current
+    if (
+      Math.abs(prev.lat - parsedLat) < 1e-7 &&
+      Math.abs(prev.lng - parsedLng) < 1e-7
+    ) {
+      return
     }
-    lastLookupAt.current = Date.now()
-  }, [])
+    prevPropsLatLng.current = { lat: parsedLat, lng: parsedLng }
+  }, [latitude, longitude])
 
-  const jumpTo = useCallback((lat: number, lng: number, zoom = 16) => {
-    const map = mapRef.current
-    const marker = markerRef.current
-    if (!map || !marker) return
-    const ll = L.latLng(lat, lng)
-    marker.setLatLng(ll)
-    map.setView(ll, zoom)
-  }, [])
+  useEffect(() => {
+    setSearchText(initialSearchText)
+  }, [initialSearchText])
 
   const applySelection = useCallback((selection: LocationSelection) => {
-    setSelectedLabel(selection.area ?? selection.city ?? selection.displayName)
-    setSelectedMeta(
-      [selection.city, selection.state, selection.pincode].filter(Boolean).join(', '),
-    )
+    setFullAddress(selection.displayName)
     onPickRef.current(selection)
   }, [])
 
@@ -213,265 +96,324 @@ export function LocationSearchMap({
       setLookupLoading(true)
       setSearchError(null)
       try {
-        await waitForRateLimit()
-        const hit = await reverseLookup(lat, lng)
-        const selection = hit
-          ? extractSelection(hit.display_name, lat, lng, hit.address)
-          : {
-              latitude: lat,
-              longitude: lng,
-              displayName: 'Pinned location',
-            }
+        const selection = await reverseGeocodeLatLng(lat, lng, apiKey)
+        setSearchText(selection.displayName)
         applySelection(selection)
       } catch {
         applySelection({
           latitude: lat,
           longitude: lng,
-          displayName: 'Pinned location',
+          displayName: 'Current location',
         })
       } finally {
         setLookupLoading(false)
       }
     },
-    [applySelection, waitForRateLimit],
+    [apiKey, applySelection],
   )
 
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    const parsed = parseCoords(
-      initialCoordsRef.current.latitude,
-      initialCoordsRef.current.longitude,
-    )
-    const center = parsed ?? DEFAULT_CENTER
-    const zoom = parsed ? 16 : 12
-
-    const map = L.map(el, { scrollWheelZoom: true }).setView(center, zoom)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map)
-
-    const marker = L.marker(center, { draggable: true, icon: pinIcon }).addTo(map)
-    mapRef.current = map
-    markerRef.current = marker
-
-    marker.on('dragend', () => {
-      const point = marker.getLatLng()
-      void reverseAndApply(point.lat, point.lng)
-    })
-
-    map.on('click', (event: L.LeafletMouseEvent) => {
-      marker.setLatLng(event.latlng)
-      map.panTo(event.latlng)
-      void reverseAndApply(event.latlng.lat, event.latlng.lng)
-    })
-
-    const timeout = window.setTimeout(() => {
-      map.invalidateSize()
-      setMapReady(true)
-    }, 150)
-
-    return () => {
-      window.clearTimeout(timeout)
-      setMapReady(false)
-      map.remove()
-      mapRef.current = null
-      markerRef.current = null
-    }
-  }, [reverseAndApply])
-
-  useEffect(() => {
-    const map = mapRef.current
-    const marker = markerRef.current
-    if (!map || !marker) return
-
-    const parsed = parseCoords(latitude, longitude)
-    if (!parsed) return
-
-    const current = marker.getLatLng()
-    if (Math.abs(current.lat - parsed[0]) < 1e-7 && Math.abs(current.lng - parsed[1]) < 1e-7) return
-
-    marker.setLatLng(parsed)
-    map.setView(parsed, Math.max(map.getZoom(), 14), { animate: false })
-  }, [latitude, longitude])
-
-  useEffect(() => {
-    setSearchText(initialSearchText)
-  }, [initialSearchText])
-
-  useEffect(() => {
-    if (initialSearchText.trim()) {
-      setSelectedLabel(initialSearchText)
-    }
-  }, [initialSearchText])
-
-  async function handleSearch() {
-    const query = searchText.trim()
-    setSearchError(null)
-    setSearchHits([])
-    if (!query) {
-      setSearchError('Type an area, landmark, city, or 6-digit pincode to search.')
-      return
-    }
-    if (!mapReady) return
-
-    setSearchLoading(true)
-    try {
-      await waitForRateLimit()
-      const hits = await searchNominatim(query)
-      if (hits.length === 0) {
-        setSearchError('No results found. Try a fuller address or another spelling.')
-      } else {
-        setSearchHits(hits)
+  const runAutocomplete = useCallback(
+    async (q: string) => {
+      if (q.length < MIN_INPUT_LEN) {
+        setSearchHits([])
+        return
       }
-    } catch {
-      setSearchError('Could not reach location search right now. Please try again.')
-    } finally {
-      setSearchLoading(false)
+      setSearchLoading(true)
+      setSearchError(null)
+      try {
+        const hits = await fetchPlaceAutocomplete(q, sessionTokenRef.current, apiKey)
+        if (hits.length === 0) {
+          setSearchError('No results found.')
+        }
+        setSearchHits(hits)
+      } catch (err) {
+        console.error('[places-autocomplete]', err)
+        setSearchError(
+          err instanceof Error && err.message.length < 160
+            ? err.message
+            : 'Search failed. Enable Places API (New) for this key in Google Cloud.',
+        )
+        setSearchHits([])
+      } finally {
+        setSearchLoading(false)
+      }
+    },
+    [apiKey],
+  )
+
+  const onSearchTextChange = (value: string) => {
+    setSearchText(value)
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null
+      void runAutocomplete(value)
+    }, DEBOUNCE_MS)
+  }
+
+  const clearSearch = () => {
+    setSearchText('')
+    setSearchHits([])
+    setSearchError(null)
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
     }
   }
 
-  function pickHit(hit: NominatimHit) {
-    const lat = Number.parseFloat(hit.lat)
-    const lng = Number.parseFloat(hit.lon)
-    if (Number.isNaN(lat) || Number.isNaN(lng)) return
-
-    jumpTo(lat, lng, 17)
+  async function pickHit(hit: AutocompleteHit) {
     setSearchHits([])
     setSearchError(null)
-    applySelection(extractSelection(hit.display_name, lat, lng, hit.address))
+    setLookupLoading(true)
+    try {
+      const details = await fetchPlaceDetails(hit.placeId, sessionTokenRef.current, apiKey)
+      sessionTokenRef.current = crypto.randomUUID().replace(/-/g, '')
+      const selection = placeDetailsToSelection(details)
+      if (!selection) {
+        setSearchError('Could not load that place.')
+        return
+      }
+      setSearchText(selection.displayName)
+      applySelection(selection)
+    } catch {
+      setSearchError('Could not load place.')
+    } finally {
+      setLookupLoading(false)
+    }
   }
 
   function handleUseMyLocation() {
     setGeoError(null)
     if (!navigator.geolocation) {
-      setGeoError('Your browser does not support location access.')
+      setGeoError('Location not supported.')
       return
     }
-    if (!mapReady) return
 
     setGeoLoading(true)
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
-        jumpTo(lat, lng, 17)
         setGeoLoading(false)
         void reverseAndApply(lat, lng)
       },
       (error) => {
         setGeoLoading(false)
-        const message =
-          error.code === 1
-            ? 'Location permission was denied. Use search or move the pin manually.'
-            : error.code === 2
-              ? 'Current location is unavailable. Try search instead.'
-              : 'Could not fetch your location. Please search or place the pin manually.'
-        setGeoError(message)
+        setGeoError(
+          error.code === 1 ? 'Permission denied — try search.' : 'GPS unavailable — try search.',
+        )
       },
       { enableHighAccuracy: true, timeout: 20_000, maximumAge: 60_000 },
     )
   }
 
+  const selectedParts = fullAddress ? splitLocationDisplay(fullAddress) : null
+
   return (
-    <div className={cn('overflow-hidden rounded-2xl border border-border bg-card', className)}>
-      <div className="space-y-3 border-b border-border p-4">
-        <div className="space-y-1">
-          <Label className="text-sm font-medium">{label}</Label>
-          <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="flex min-w-0 flex-1 gap-2">
-            <Input
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder="Search area, landmark, city, or pincode"
-              className="min-w-0"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  void handleSearch()
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              className="shrink-0 gap-1.5"
-              disabled={!mapReady || searchLoading}
-              onClick={() => void handleSearch()}
-            >
-              {searchLoading ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Search className="size-4" aria-hidden />
-              )}
-              Search
-            </Button>
+    <div
+      className={cn(
+        embedded ? 'bg-transparent' : 'bg-card rounded-2xl border border-border shadow-sm',
+        'min-w-0 max-w-full overflow-x-hidden',
+        !embedded && 'w-full max-w-lg',
+        className,
+      )}
+    >
+      <div className={cn('min-w-0 space-y-3', embedded ? 'p-0' : 'p-4 sm:p-5')}>
+        {!embedded ? (
+          <div className="space-y-1">
+            <Label className="text-base font-semibold">{label}</Label>
+            {description ? (
+              <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
+            ) : null}
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="shrink-0 gap-1.5"
-            disabled={!mapReady || geoLoading}
-            onClick={handleUseMyLocation}
-          >
-            {geoLoading ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <Crosshair className="size-4" aria-hidden />
-            )}
-            Use my location
-          </Button>
+        ) : null}
+
+        <div className="relative">
+          {searchLoading ? (
+            <Loader2
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 animate-spin"
+              aria-hidden
+            />
+          ) : (
+            <Search
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+              aria-hidden
+            />
+          )}
+          <Input
+            value={searchText}
+            onChange={(e) => onSearchTextChange(e.target.value)}
+            placeholder="Search a new address"
+            className="border-input bg-muted/30 h-10 max-w-full rounded-xl pr-9 pl-9 text-sm"
+            autoComplete="off"
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                if (debounceRef.current) {
+                  clearTimeout(debounceRef.current)
+                  debounceRef.current = null
+                }
+                void runAutocomplete(searchText)
+              }
+            }}
+            aria-label="Search address"
+          />
+          {searchText ? (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1"
+              onClick={clearSearch}
+              aria-label="Clear search"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
         </div>
 
-        {searchError ? <p className="text-destructive text-xs">{searchError}</p> : null}
-        {geoError ? <p className="text-destructive text-xs">{geoError}</p> : null}
+        <button
+          type="button"
+          onClick={handleUseMyLocation}
+          disabled={geoLoading}
+          className={cn(
+            'border-input flex w-full items-center gap-2.5 rounded-xl border bg-transparent px-3 py-2.5 text-left text-sm transition-colors',
+            'hover:bg-muted/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
+            'disabled:pointer-events-none disabled:opacity-50',
+          )}
+        >
+          {geoLoading ? (
+            <Loader2 className="text-primary size-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <Crosshair className="text-primary size-4 shrink-0" aria-hidden />
+          )}
+          <span className="text-primary font-medium">Use my current location</span>
+        </button>
+
+        {(searchError || geoError) && (
+          <p className="text-destructive text-xs">{searchError || geoError}</p>
+        )}
 
         {searchHits.length > 0 ? (
-          <ul className="border-input bg-muted/40 max-h-40 overflow-y-auto rounded-lg border text-xs">
-            {searchHits.map((hit, index) => (
-              <li key={`${hit.lat}-${hit.lon}-${index}`} className="border-border/80 border-b last:border-0">
-                <button
-                  type="button"
-                  className="hover:bg-muted flex w-full items-start gap-2 px-3 py-2 text-left"
-                  onClick={() => pickHit(hit)}
-                >
-                  <MapPin className="text-primary mt-0.5 size-3.5 shrink-0" aria-hidden />
-                  <span className="line-clamp-2">{hit.display_name}</span>
-                </button>
-              </li>
-            ))}
+          <ul
+            className={cn(
+              'border-border bg-background divide-y divide-dashed overflow-x-hidden rounded-lg border text-sm',
+              embedded
+                ? ''
+                : 'max-h-[min(40vh,240px)] overflow-y-auto',
+            )}
+          >
+            {searchHits.map((hit) => {
+              const split = splitSuggestionLabel(hit.label)
+              const title = hit.title ?? split.title
+              const subtitle = hit.subtitle ?? split.subtitle
+              return (
+                <li key={hit.placeId} className="min-w-0">
+                  <button
+                    type="button"
+                    className="hover:bg-muted/50 flex w-full min-w-0 items-start gap-2 px-3 py-2.5 text-left transition-colors"
+                    onClick={() => void pickHit(hit)}
+                  >
+                    <MapPin className="text-muted-foreground mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    <span className="min-w-0 flex-1 overflow-hidden">
+                      <span className="text-foreground line-clamp-1 block font-medium" title={title}>
+                        {title}
+                      </span>
+                      {subtitle ? (
+                        <span
+                          className="text-muted-foreground mt-0.5 line-clamp-2 block text-xs leading-snug"
+                          title={subtitle}
+                        >
+                          {subtitle}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         ) : null}
 
-        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-2">
-          <p className="text-foreground text-sm font-medium">
-            {lookupLoading ? 'Updating selected spot...' : selectedLabel || 'No spot selected yet'}
-          </p>
-          <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-            {selectedMeta || 'Search, use GPS, or move the pin to fine-tune the delivery location.'}
-          </p>
-        </div>
+        {fullAddress || lookupLoading ? (
+          <div
+            className={cn(
+              'rounded-lg border border-dashed px-3 py-2',
+              embedded ? 'border-border/60 bg-muted/15' : 'border-border/80 bg-muted/20',
+            )}
+          >
+            <p className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
+              Selected
+            </p>
+            {lookupLoading ? (
+              <p className="text-muted-foreground text-sm">Loading…</p>
+            ) : selectedParts ? (
+              <div className="space-y-0.5">
+                <p
+                  className="text-foreground line-clamp-1 text-sm font-semibold leading-snug"
+                  title={selectedParts.primary}
+                >
+                  {selectedParts.primary}
+                </p>
+                {selectedParts.secondary ? (
+                  <p
+                    className="text-muted-foreground line-clamp-2 text-xs leading-snug"
+                    title={selectedParts.secondary}
+                  >
+                    {selectedParts.secondary}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      <div ref={containerRef} className="bg-muted/30 w-full" style={{ height }} />
-
-      <p className="text-muted-foreground border-t border-border bg-card px-3 py-2 text-xs leading-relaxed">
-        Map data © OpenStreetMap contributors. Search uses{' '}
-        <a
-          href="https://nominatim.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary underline"
-        >
-          Nominatim
-        </a>
-        . You can click the map or drag the pin if the spot needs adjustment.
-      </p>
+      {!embedded ? (
+        <p className="text-muted-foreground border-border border-t px-4 py-2 text-[10px] leading-relaxed sm:px-5">
+          Search powered by Google Places.
+        </p>
+      ) : null}
     </div>
   )
+}
+
+type LocationSearchMapProps = {
+  latitude: number
+  longitude: number
+  onPick: (selection: LocationSelection) => void
+  initialSearchText?: string
+  initialSelectedSummary?: string
+  embedded?: boolean
+  /** @deprecated Ignored */
+  height?: number
+  className?: string
+  label?: string
+  description?: string
+}
+
+export function LocationSearchMap(props: LocationSearchMapProps) {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
+  const { height: _legacyHeight, ...innerProps } = props
+  void _legacyHeight
+
+  if (!apiKey?.trim()) {
+    return (
+      <div
+        className={cn(
+          'rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm',
+          innerProps.className,
+        )}
+      >
+        <p className="font-medium text-destructive">API key missing</p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          Add <code className="text-foreground">VITE_GOOGLE_MAPS_API_KEY</code>.
+        </p>
+      </div>
+    )
+  }
+
+  return <LocationSearchInner apiKey={apiKey} {...innerProps} />
 }

@@ -16,6 +16,7 @@ import {
   OTP_RESEND_COOLDOWN_SEC,
 } from '@/constants/auth-ui'
 import { ROUTES } from '@/constants/routes'
+import { flushGuestCartToServer } from '@/lib/flush-guest-cart'
 import { flushPendingCartAdd } from '@/lib/flush-pending-cart'
 import * as authApi from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth-store'
@@ -88,8 +89,10 @@ export function LoginFlow({ onSuccess, onCancel, from = ROUTES.home }: LoginFlow
         return
       }
 
-      const added = await flushPendingCartAdd(qc)
-      if (added) toast.success('Added to cart')
+      const guestMerged = await flushGuestCartToServer(qc)
+      const pendingAdded = await flushPendingCartAdd(qc)
+      if (guestMerged) toast.success('Your cart was saved to your account')
+      if (pendingAdded) toast.success('Added to cart')
 
       onSuccess?.(data.isNewUser)
     },

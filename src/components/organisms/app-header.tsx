@@ -4,7 +4,6 @@ import {
   ChevronDown,
   Heart,
   LogOut,
-  MapPin,
   Package,
   Search,
   Settings,
@@ -32,6 +31,7 @@ import { useCartQuery } from '@/hooks/use-cart'
 import * as notificationsApi from '@/services/notifications.service'
 import { selectIsAuthenticated, useAuthStore } from '@/stores/auth-store'
 import { useLocationStore } from '@/stores/location-store'
+import { splitLocationDisplay } from '@/lib/location-label'
 import { cn } from '@/lib/utils'
 
 export function AppHeader() {
@@ -46,8 +46,8 @@ export function AppHeader() {
   const { displayLabel, city } = useLocationStore()
   const { data: cart } = useCartQuery()
   const cartCount = cart?.totalQuantity ?? 0
-  // Show full address label — fall back to city only if nothing stored
-  const locationLabel = displayLabel || city || 'Select area'
+  const rawLocation = displayLabel || city || 'Select area'
+  const { primary: locPrimary, secondary: locSecondary } = splitLocationDisplay(rawLocation)
 
   const unreadQuery = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
@@ -95,8 +95,12 @@ export function AppHeader() {
           className="group flex min-w-0 flex-1 items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm transition-colors hover:bg-muted lg:hidden"
           aria-label="Change delivery area"
         >
-          <MapPin className="text-primary size-4 shrink-0" aria-hidden />
-          <span className="truncate font-medium">{locationLabel}</span>
+          <span className="flex min-w-0 flex-col text-left leading-tight">
+            <span className="truncate font-semibold">{locPrimary}</span>
+            {locSecondary ? (
+              <span className="text-muted-foreground truncate text-[11px]">{locSecondary}</span>
+            ) : null}
+          </span>
           <ChevronDown className="text-muted-foreground size-3 shrink-0" />
         </button>
 
@@ -109,8 +113,12 @@ export function AppHeader() {
             className="group border-border/60 hover:border-primary/40 hover:bg-primary/5 flex shrink-0 items-center gap-1.5 rounded-xl border bg-transparent px-3 py-2 text-sm transition-colors"
             title="Change delivery area"
           >
-            <MapPin className="text-primary size-4 shrink-0" aria-hidden />
-            <span className="max-w-[240px] truncate font-medium text-left leading-tight">{locationLabel}</span>
+            <span className="flex max-w-[min(280px,36vw)] min-w-0 flex-col text-left leading-tight">
+              <span className="truncate font-semibold">{locPrimary}</span>
+              {locSecondary ? (
+                <span className="text-muted-foreground truncate text-xs">{locSecondary}</span>
+              ) : null}
+            </span>
             <ChevronDown className="text-muted-foreground size-3.5 shrink-0 transition-transform group-hover:translate-y-px" />
           </button>
 

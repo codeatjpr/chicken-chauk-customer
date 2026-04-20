@@ -14,10 +14,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  LocationSearchMap,
-  type LocationSelection,
-} from '@/components/organisms/location-search-map'
+import { LocationSearchMap } from '@/components/organisms/location-search-map'
+import type { LocationSelection } from '@/types/location'
 import type { UserAddressDto } from '@/types/address'
 import { useLocationStore } from '@/stores/location-store'
 import { getApiErrorMessage } from '@/utils/api-error'
@@ -110,6 +108,12 @@ export function AddAddressDialog({
   const applyPickedLocation = (selection: LocationSelection) => {
     form.setValue('latitude', selection.latitude, { shouldValidate: true, shouldDirty: true })
     form.setValue('longitude', selection.longitude, { shouldValidate: true, shouldDirty: true })
+    if (selection.addressLine1) {
+      form.setValue('addressLine1', selection.addressLine1, {
+        shouldValidate: true,
+        shouldDirty: true,
+      })
+    }
     if (selection.city) {
       form.setValue('city', selection.city, { shouldValidate: true, shouldDirty: true })
     }
@@ -122,7 +126,7 @@ export function AddAddressDialog({
         shouldDirty: true,
       })
     }
-    toast.message('Location updated on the map')
+    toast.message('Location updated')
   }
 
   const submit = form.handleSubmit(async (values) => {
@@ -142,8 +146,8 @@ export function AddAddressDialog({
           <DialogTitle>
             {editing ? 'Edit delivery address' : 'Add delivery address'}
           </DialogTitle>
-          <DialogDescription>
-            Search for the place, adjust the pin if needed, and save a delivery-ready address.
+          <DialogDescription className="sr-only">
+            Search or use GPS to fill your address
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-3">
@@ -191,26 +195,29 @@ export function AddAddressDialog({
               </p>
             )}
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <LocationSearchMap
+              key={editing?.id ?? 'new-address'}
+              embedded
               latitude={latitudeValue}
               longitude={longitudeValue}
               initialSearchText={locationSummary}
-              label="Pin delivery location"
-              description="Search by area, landmark, city, or pincode, or use your current location. Drag the pin if the spot needs adjustment."
+              initialSelectedSummary={
+                editing
+                  ? [
+                      editing.addressLine1,
+                      editing.addressLine2,
+                      `${editing.city}, ${editing.state} ${editing.pincode}`,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')
+                  : undefined
+              }
               onPick={applyPickedLocation}
             />
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-2">
-              <p className="text-sm font-medium">Delivery pin is ready</p>
-              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                {form.getValues('city') || defaultCity || city
-                  ? `Using ${form.getValues('city') || defaultCity || city} for delivery matching.`
-                  : 'Search or place the pin to confirm the delivery spot.'}
-              </p>
-            </div>
             {(form.formState.errors.latitude || form.formState.errors.longitude) && (
               <p className="text-destructive text-xs">
-                Select a valid location on the map before saving.
+                Set a location with search or GPS first.
               </p>
             )}
           </div>

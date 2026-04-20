@@ -148,6 +148,14 @@ export default function App() {
               </SuspensePage>
             }
           />
+          <Route
+            path="cart"
+            element={
+              <SuspensePage>
+                <CartPage />
+              </SuspensePage>
+            }
+          />
 
           <Route element={<RequireAuth />}>
             <Route
@@ -155,14 +163,6 @@ export default function App() {
               element={
                 <SuspensePage>
                   <OnboardingPage />
-                </SuspensePage>
-              }
-            />
-            <Route
-              path="cart"
-              element={
-                <SuspensePage>
-                  <CartPage />
                 </SuspensePage>
               }
             />

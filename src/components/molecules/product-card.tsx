@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { ProductFavoriteButton } from '@/components/molecules/product-favorite-button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { stripHtmlToPlainText } from '@/lib/html'
 import { cn } from '@/lib/utils'
 import { formatInr } from '@/utils/format'
 
@@ -94,7 +95,7 @@ export function ProductCard({
               </h3>
               {description ? (
                 <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-relaxed">
-                  {description}
+                  {stripHtmlToPlainText(description)}
                 </p>
               ) : null}
             </div>

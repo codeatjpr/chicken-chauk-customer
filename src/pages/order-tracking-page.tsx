@@ -1,17 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import L from 'leaflet'
+import { APIProvider, Map, Marker, Polyline } from '@vis.gl/react-google-maps'
 import { Loader2Icon, MapPin } from 'lucide-react'
-import { useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
 import { orderPath } from '@/constants/routes'
 import * as deliveryApi from '@/services/delivery.service'
+import * as mapsApi from '@/services/maps.service'
 import type { DeliveryDetailDto, RiderLocationDto } from '@/types/delivery'
 import { cn } from '@/lib/utils'
-
-import 'leaflet/dist/leaflet.css'
 
 function isActiveTrackingStatus(status: string) {
   return (
@@ -29,89 +27,134 @@ function TrackingMap({
   delivery: DeliveryDetailDto
   riderLoc: RiderLocationDto | null | undefined
 }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<L.Map | null>(null)
-  const layerRef = useRef<L.LayerGroup | null>(null)
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
 
-  useEffect(() => {
-    const el = wrapRef.current
-    if (!el || mapRef.current) return
-    const map = L.map(el, { zoomControl: true })
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map)
-    const group = L.layerGroup().addTo(map)
-    mapRef.current = map
-    layerRef.current = group
-    return () => {
-      map.remove()
-      mapRef.current = null
-      layerRef.current = null
-    }
-  }, [])
+  const v = delivery.order.vendor
+  const addr = delivery.order.deliveryAddress
 
-  useEffect(() => {
-    const map = mapRef.current
-    const group = layerRef.current
-    if (!map || !group) return
+  const routeQuery = useQuery({
+    queryKey: queryKeys.maps.drivingRoute(
+      delivery.id,
+      riderLoc?.lat,
+      riderLoc?.lng,
+      addr?.latitude,
+      addr?.longitude,
+    ),
+    queryFn: () =>
+      mapsApi.fetchDrivingRoute({
+        originLat: riderLoc!.lat,
+        originLng: riderLoc!.lng,
+        destLat: addr!.latitude,
+        destLng: addr!.longitude,
+      }),
+    enabled: Boolean(
+      apiKey?.trim() &&
+        riderLoc &&
+        addr &&
+        isActiveTrackingStatus(delivery.status),
+    ),
+    retry: false,
+    staleTime: 90_000,
+  })
 
-    group.clearLayers()
-    const bounds: L.LatLngTuple[] = []
-
-    const v = delivery.order.vendor
-    const vendorLL: L.LatLngTuple = [v.latitude, v.longitude]
-    L.circleMarker(vendorLL, {
-      radius: 7,
-      color: '#c2410c',
-      fillColor: '#fb923c',
-      fillOpacity: 0.9,
-      weight: 2,
-    })
-      .bindTooltip('Restaurant')
-      .addTo(group)
-    bounds.push(vendorLL)
-
-    const addr = delivery.order.deliveryAddress
+  const boundsFromPoints = (): {
+    north: number
+    south: number
+    east: number
+    west: number
+  } | null => {
+    const pts: { lat: number; lng: number }[] = [
+      { lat: v.latitude, lng: v.longitude },
+    ]
     if (addr) {
-      const drop: L.LatLngTuple = [addr.latitude, addr.longitude]
-      L.circleMarker(drop, {
-        radius: 7,
-        color: '#15803d',
-        fillColor: '#4ade80',
-        fillOpacity: 0.9,
-        weight: 2,
-      })
-        .bindTooltip('Delivery address')
-        .addTo(group)
-      bounds.push(drop)
+      pts.push({ lat: addr.latitude, lng: addr.longitude })
     }
-
     if (riderLoc) {
-      const r: L.LatLngTuple = [riderLoc.lat, riderLoc.lng]
-      L.circleMarker(r, {
-        radius: 9,
-        color: '#1d4ed8',
-        fillColor: '#60a5fa',
-        fillOpacity: 0.95,
-        weight: 2,
-      })
-        .bindTooltip(`Rider · ${delivery.rider.user.name}`)
-        .addTo(group)
-      bounds.push(r)
+      pts.push({ lat: riderLoc.lat, lng: riderLoc.lng })
     }
+    if (pts.length === 0) return null
+    let north = pts[0].lat
+    let south = pts[0].lat
+    let east = pts[0].lng
+    let west = pts[0].lng
+    for (const p of pts) {
+      north = Math.max(north, p.lat)
+      south = Math.min(south, p.lat)
+      east = Math.max(east, p.lng)
+      west = Math.min(west, p.lng)
+    }
+    return { north, south, east, west }
+  }
 
-    if (bounds.length >= 2) {
-      map.fitBounds(L.latLngBounds(bounds), { padding: [28, 28], maxZoom: 15 })
-    } else if (bounds.length === 1) {
-      map.setView(bounds[0], 14)
-    }
-  }, [delivery, riderLoc])
+  const defaultBounds = boundsFromPoints()
+
+  if (!apiKey?.trim()) {
+    return (
+      <div className="border-border/80 text-muted-foreground rounded-xl border border-dashed p-4 text-center text-sm">
+        Set <code className="text-foreground">VITE_GOOGLE_MAPS_API_KEY</code> to show the live map.
+      </div>
+    )
+  }
+
+  const encoded =
+    routeQuery.data?.encodedPolyline && routeQuery.isSuccess
+      ? routeQuery.data.encodedPolyline
+      : undefined
 
   return (
-    <div
-      ref={wrapRef}
-      className="border-border/80 z-0 h-[min(52vh,420px)] w-full overflow-hidden rounded-xl border"
-    />
+    <APIProvider apiKey={apiKey} region="in" language="en">
+      <div className="border-border/80 z-0 h-[min(52vh,420px)] w-full overflow-hidden rounded-xl border">
+        <Map
+          key={riderLoc ? 'with-rider' : 'no-rider'}
+          defaultBounds={defaultBounds ?? undefined}
+          defaultCenter={
+            defaultBounds
+              ? undefined
+              : { lat: v.latitude, lng: v.longitude }
+          }
+          defaultZoom={defaultBounds ? undefined : 14}
+          style={{ width: '100%', height: '100%' }}
+          gestureHandling="greedy"
+          mapTypeControl={false}
+          streetViewControl={false}
+          fullscreenControl={false}
+        >
+          {encoded ? (
+            <Polyline
+              encodedPath={encoded}
+              strokeColor="#2563eb"
+              strokeOpacity={0.9}
+              strokeWeight={4}
+            />
+          ) : null}
+
+          <Marker
+            position={{ lat: v.latitude, lng: v.longitude }}
+            title={v.name}
+          />
+
+          {addr ? (
+            <Marker
+              position={{ lat: addr.latitude, lng: addr.longitude }}
+              title="Delivery address"
+            />
+          ) : null}
+
+          {riderLoc ? (
+            <Marker
+              position={{ lat: riderLoc.lat, lng: riderLoc.lng }}
+              title={`Rider · ${delivery.rider.user.name}`}
+            />
+          ) : null}
+        </Map>
+      </div>
+      {routeQuery.isError ? (
+        <p className="text-muted-foreground mt-2 text-xs">
+          Route line unavailable (check server{' '}
+          <code className="text-foreground">GOOGLE_MAPS_SERVER_API_KEY</code>).
+        </p>
+      ) : null}
+    </APIProvider>
   )
 }
 

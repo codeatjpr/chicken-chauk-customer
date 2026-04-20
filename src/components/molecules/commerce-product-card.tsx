@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { stripHtmlToPlainText } from '@/lib/html'
 import { cn } from '@/lib/utils'
 import { formatInr } from '@/utils/format'
 
@@ -89,7 +90,7 @@ export function CommerceProductCard({
               </h3>
               {description ? (
                 <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed">
-                  {description}
+                  {stripHtmlToPlainText(description)}
                 </p>
               ) : null}
             </div>

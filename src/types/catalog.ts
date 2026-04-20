@@ -54,7 +54,9 @@ export type VendorProductDetailDto = VendorProductDto & {
     name: string
     logoUrl: string | null
     bannerUrl: string | null
+    addressLine: string
     city: string
+    pincode: string
     rating: number
     totalRatings: number
     prepTime: number | null

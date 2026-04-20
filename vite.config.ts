@@ -1,8 +1,8 @@
-import path from 'node:path'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
-import { VitePWA } from 'vite-plugin-pwa'
+import path from "node:path";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,50 +10,50 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: "autoUpdate",
       // Precache favicons + PWA icons (public/). Matches RealFaviconGenerator output filenames.
       includeAssets: [
-        'favicon.svg',
-        'favicon.ico',
-        'favicon-96x96.png',
-        'apple-touch-icon.png',
-        'web-app-manifest-192x192.png',
-        'web-app-manifest-512x512.png',
+        "favicon.svg",
+        "favicon.ico",
+        "favicon-96x96.png",
+        "apple-touch-icon.png",
+        "web-app-manifest-192x192.png",
+        "web-app-manifest-512x512.png",
       ],
       manifest: {
-        name: 'Chicken Chauk',
-        short_name: 'Chauk',
-        description: 'Fresh meat and groceries, delivered fast.',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
-        display: 'standalone',
-        scope: '/',
-        start_url: '/',
-        id: '/',
-        lang: 'en',
+        name: "Chicken Chauk",
+        short_name: "Chauk",
+        description: "Fresh meat and groceries, delivered fast.",
+        theme_color: "#0f172a",
+        background_color: "#0f172a",
+        display: "standalone",
+        scope: "/",
+        start_url: "/",
+        id: "/",
+        lang: "en",
         icons: [
           {
-            src: '/web-app-manifest-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any',
+            src: "/web-app-manifest-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
           },
           {
-            src: '/web-app-manifest-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any',
+            src: "/web-app-manifest-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
           },
           {
-            src: '/web-app-manifest-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable',
+            src: "/web-app-manifest-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,ico,woff2,png}'],
+        globPatterns: ["**/*.{js,css,html,svg,ico,woff2,png}"],
       },
       devOptions: {
         enabled: true,
@@ -62,7 +62,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
-})
+});

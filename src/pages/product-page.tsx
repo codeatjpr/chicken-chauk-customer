@@ -23,6 +23,7 @@ import { categoryPath, vendorPath } from '@/constants/routes'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import * as catalogApi from '@/services/catalog.service'
 import { fetchDiscoverySearch } from '@/services/discovery.service'
+import { stripHtmlToPlainText } from '@/lib/html'
 import { useLocationStore } from '@/stores/location-store'
 import { formatInr } from '@/utils/format'
 
@@ -148,7 +149,9 @@ export function ProductPage() {
                 {product.name}
               </h1>
               <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:text-base">
-                {product.description ?? 'Fresh quality, curated for quick delivery and easy comparison across vendors.'}
+                {product.description
+                  ? stripHtmlToPlainText(product.description)
+                  : 'Fresh quality, curated for quick delivery and easy comparison across vendors.'}
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-3">

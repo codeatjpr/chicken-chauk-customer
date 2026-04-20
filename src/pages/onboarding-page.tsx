@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ROUTES } from '@/constants/routes'
+import { flushGuestCartToServer } from '@/lib/flush-guest-cart'
 import { flushPendingCartAdd } from '@/lib/flush-pending-cart'
 import * as profileApi from '@/services/profile.service'
 import { useAuthStore } from '@/stores/auth-store'
@@ -56,7 +57,9 @@ export function OnboardingPage() {
     onSuccess: async (nextUser) => {
       setUser(nextUser)
       toast.success("You're set")
+      const guestMerged = await flushGuestCartToServer(qc)
       const added = await flushPendingCartAdd(qc)
+      if (guestMerged) toast.success('Your cart was saved to your account')
       if (added) toast.success('Added to cart')
       navigate(from, { replace: true })
     },
