@@ -1,4 +1,4 @@
-import { Heart, Home, Search, Package, User, Wallet } from 'lucide-react'
+import { Heart, Home, Search, Store, Package, User, Wallet } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ROUTES } from '@/constants/routes'
 import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 const links = [
   { to: ROUTES.home, label: 'Home', icon: Home, guestOk: true },
+  { to: ROUTES.stores, label: 'Shops near you', icon: Store, guestOk: true },
   { to: ROUTES.search, label: 'Search', icon: Search, guestOk: true },
   { to: ROUTES.orders, label: 'Orders', icon: Package, guestOk: false },
   { to: ROUTES.favorites, label: 'Favorites', icon: Heart, guestOk: false },

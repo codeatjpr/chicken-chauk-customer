@@ -17,7 +17,9 @@ export function formatInrDetailed(amount: number): string {
   }).format(amount)
 }
 
+/** Straight-line (haversine) distance; road distance from maps can differ. */
 export function formatDistanceKm(km: number): string {
+  if (!Number.isFinite(km) || km < 0) return '—'
   if (km < 1) return `${Math.round(km * 1000)} m`
   return `${km.toFixed(1)} km`
 }

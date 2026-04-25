@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { APIProvider, Map, Marker, Polyline } from '@vis.gl/react-google-maps'
-import { Loader2Icon, MapPin } from 'lucide-react'
+import { Loader2Icon, MapPin, Phone } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,6 +8,7 @@ import { queryKeys } from '@/constants/query-keys'
 import { orderPath } from '@/constants/routes'
 import * as deliveryApi from '@/services/delivery.service'
 import * as mapsApi from '@/services/maps.service'
+import * as configApi from '@/services/config.service'
 import type { DeliveryDetailDto, RiderLocationDto } from '@/types/delivery'
 import { cn } from '@/lib/utils'
 
@@ -178,6 +179,12 @@ export function OrderTrackingPage() {
     refetchInterval: pollRider ? 10_000 : false,
   })
 
+  const publicConfigQuery = useQuery({
+    queryKey: queryKeys.app.publicConfig,
+    queryFn: () => configApi.fetchPublicConfig(),
+    staleTime: 60 * 60 * 1000,
+  })
+
   if (!id) {
     return (
       <p className="text-muted-foreground text-sm">Invalid order link.</p>
@@ -237,6 +244,64 @@ export function OrderTrackingPage() {
               </p>
             )}
           </section>
+
+          {delivery.order.deliveryAddress && (
+            <section className="border-border/80 bg-card rounded-xl border p-4 text-sm">
+              <p className="text-muted-foreground text-xs font-medium">Deliver to</p>
+              <p className="text-foreground mt-1 font-medium">
+                {delivery.order.deliveryAddress.addressLine1}
+                {delivery.order.deliveryAddress.addressLine2
+                  ? `, ${delivery.order.deliveryAddress.addressLine2}`
+                  : ''}
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                {delivery.order.deliveryAddress.city},{' '}
+                {delivery.order.deliveryAddress.state}{' '}
+                {delivery.order.deliveryAddress.pincode}
+              </p>
+              {(delivery.order.deliveryAddress.mapFormattedAddress ||
+                delivery.order.deliveryAddress.plusCode) && (
+                <div className="border-border/50 mt-2 border-t border-dashed pt-2">
+                  <p className="text-muted-foreground text-xs font-medium">Map pin</p>
+                  {delivery.order.deliveryAddress.plusCode ? (
+                    <p className="text-foreground font-mono text-xs">
+                      {delivery.order.deliveryAddress.plusCode}
+                    </p>
+                  ) : null}
+                  {delivery.order.deliveryAddress.mapFormattedAddress ? (
+                    <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                      {delivery.order.deliveryAddress.mapFormattedAddress}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </section>
+          )}
+
+          {(publicConfigQuery.data?.supportPhone || publicConfigQuery.data?.supportEmail) && (
+            <section className="border-border/80 bg-card rounded-xl border p-4 text-sm">
+              <p className="text-muted-foreground text-xs font-medium">Need help?</p>
+              <div className="mt-2 flex flex-col gap-2">
+                {publicConfigQuery.data?.supportPhone ? (
+                  <a
+                    href={`tel:${publicConfigQuery.data.supportPhone.replace(/\s/g, '')}`}
+                    className="text-primary inline-flex items-center gap-2 font-medium"
+                  >
+                    <Phone className="size-4 shrink-0" />
+                    {publicConfigQuery.data.supportPhone}
+                  </a>
+                ) : null}
+                {publicConfigQuery.data?.supportEmail ? (
+                  <a
+                    href={`mailto:${publicConfigQuery.data.supportEmail}`}
+                    className="text-muted-foreground text-xs underline-offset-2 hover:underline"
+                  >
+                    {publicConfigQuery.data.supportEmail}
+                  </a>
+                ) : null}
+              </div>
+            </section>
+          )}
 
           <TrackingMap
             key={id}

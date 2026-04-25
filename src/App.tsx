@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { MarketingGate } from "@/components/routing/marketing-gate";
 import { GuestLayout } from "@/components/routing/guest-layout";
 import { RequireAuth } from "@/components/routing/require-auth";
 import { SessionGate } from "@/components/session/session-gate";
@@ -15,6 +14,7 @@ const ProductBrowsePage = lazy(() =>
   })),
 );
 const SearchPage = lazy(() => import("@/pages/search-page").then((m) => ({ default: m.SearchPage })));
+const StoresPage = lazy(() => import("@/pages/stores-page").then((m) => ({ default: m.StoresPage })));
 const CategoryProductsPage = lazy(() =>
   import("@/pages/category-products-page").then((m) => ({
     default: m.CategoryProductsPage,
@@ -25,6 +25,7 @@ const ProductPage = lazy(() => import("@/pages/product-page").then((m) => ({ def
 const VendorProductPage = lazy(() => import("@/pages/vendor-product-page").then((m) => ({ default: m.VendorProductPage })));
 const HelpPage = lazy(() => import("@/pages/help-page").then((m) => ({ default: m.HelpPage })));
 const LoginPage = lazy(() => import("@/pages/login-page").then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import("@/pages/register-page").then((m) => ({ default: m.RegisterPage })));
 
 const OnboardingPage = lazy(() =>
   import("@/pages/onboarding-page").then((m) => ({
@@ -33,6 +34,9 @@ const OnboardingPage = lazy(() =>
 );
 const CartPage = lazy(() => import("@/pages/cart-page").then((m) => ({ default: m.CartPage })));
 const CheckoutPage = lazy(() => import("@/pages/checkout-page").then((m) => ({ default: m.CheckoutPage })));
+const CheckoutPaymentPage = lazy(() =>
+  import("@/pages/checkout-payment-page").then((m) => ({ default: m.CheckoutPaymentPage })),
+);
 const OrdersPage = lazy(() => import("@/pages/orders-page").then((m) => ({ default: m.OrdersPage })));
 const OrderTrackingPage = lazy(() =>
   import("@/pages/order-tracking-page").then((m) => ({
@@ -70,14 +74,22 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<SessionGate />}>
-        <Route index element={<MarketingGate />} />
+        <Route index element={<Navigate to={ROUTES.home} replace />} />
 
-        <Route path="login" element={<GuestLayout />}>
+        <Route element={<GuestLayout />}>
           <Route
-            index
+            path="login"
             element={
               <SuspensePage>
                 <LoginPage />
+              </SuspensePage>
+            }
+          />
+          <Route
+            path="register"
+            element={
+              <SuspensePage>
+                <RegisterPage />
               </SuspensePage>
             }
           />
@@ -105,6 +117,14 @@ export default function App() {
             element={
               <SuspensePage>
                 <SearchPage />
+              </SuspensePage>
+            }
+          />
+          <Route
+            path="stores"
+            element={
+              <SuspensePage>
+                <StoresPage />
               </SuspensePage>
             }
           />
@@ -171,6 +191,14 @@ export default function App() {
               element={
                 <SuspensePage>
                   <CheckoutPage />
+                </SuspensePage>
+              }
+            />
+            <Route
+              path="checkout/payment"
+              element={
+                <SuspensePage>
+                  <CheckoutPaymentPage />
                 </SuspensePage>
               }
             />

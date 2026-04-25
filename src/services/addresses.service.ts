@@ -21,6 +21,8 @@ export async function createAddress(body: {
   pincode: string
   latitude: number
   longitude: number
+  mapFormattedAddress?: string
+  plusCode?: string
   isDefault?: boolean
 }): Promise<UserAddressDto> {
   const { data } = await axiosInstance.post<ApiSuccess<UserAddressDto>>(
@@ -44,6 +46,8 @@ export async function updateAddress(
     pincode: string
     latitude: number
     longitude: number
+    mapFormattedAddress: string | null | undefined
+    plusCode: string | null | undefined
     isDefault: boolean
   }>,
 ): Promise<UserAddressDto> {

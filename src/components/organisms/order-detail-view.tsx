@@ -187,7 +187,9 @@ export function OrderDetailView({ orderId, onReorderSuccess, onCancelSuccess }: 
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{item.productName}</p>
-                <p className="text-muted-foreground text-xs">×{item.quantity} {item.unit}</p>
+                <p className="text-muted-foreground text-xs">
+                  ×{item.quantity} {item.unit} · (incl. of all taxes)
+                </p>
               </div>
               <span className="shrink-0 tabular-nums font-medium">{formatInr(item.total)}</span>
             </li>
@@ -203,18 +205,29 @@ export function OrderDetailView({ orderId, onReorderSuccess, onCancelSuccess }: 
         </div>
         <div className="flex justify-between">
           <span>Delivery</span>
-          <span className="tabular-nums text-foreground">{formatInr(o.deliveryFee)}</span>
+          <span
+            className={cn(
+              'tabular-nums text-foreground',
+              o.deliveryFee === 0 && 'text-emerald-600 dark:text-emerald-400 font-medium',
+            )}
+          >
+            {o.deliveryFee === 0 ? 'FREE' : formatInr(o.deliveryFee)}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>Platform fee</span>
-          <span className="tabular-nums text-foreground">{formatInr(o.platformFee)}</span>
+          <span
+            className={cn(
+              'tabular-nums text-foreground',
+              o.platformFee === 0 && 'text-emerald-600 dark:text-emerald-400 font-medium',
+            )}
+          >
+            {o.platformFee === 0 ? 'FREE' : formatInr(o.platformFee)}
+          </span>
         </div>
-        {o.taxAmount > 0 && (
-          <div className="flex justify-between">
-            <span>Tax</span>
-            <span className="tabular-nums text-foreground">{formatInr(o.taxAmount)}</span>
-          </div>
-        )}
+        <p className="text-muted-foreground text-xs">
+          Item prices are inclusive of all taxes. No extra GST.
+        </p>
         {o.discount > 0 && (
           <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
             <span>Discount</span>
@@ -247,6 +260,21 @@ export function OrderDetailView({ orderId, onReorderSuccess, onCancelSuccess }: 
             <p>
               {o.deliveryAddress.city}, {o.deliveryAddress.state} {o.deliveryAddress.pincode}
             </p>
+            {(o.deliveryAddress.mapFormattedAddress || o.deliveryAddress.plusCode) && (
+              <div className="border-border/50 mt-2 border-t border-dotted pt-2">
+                <p className="text-muted-foreground text-xs font-medium">Map / pin location</p>
+                {o.deliveryAddress.plusCode ? (
+                  <p className="text-foreground mt-0.5 font-mono text-xs">
+                    {o.deliveryAddress.plusCode}
+                  </p>
+                ) : null}
+                {o.deliveryAddress.mapFormattedAddress ? (
+                  <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                    {o.deliveryAddress.mapFormattedAddress}
+                  </p>
+                ) : null}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -350,13 +378,13 @@ export function OrderDetailView({ orderId, onReorderSuccess, onCancelSuccess }: 
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
             <AlertDialogDescription>
-              This cannot be undone if the vendor has not started preparing your food.
+              This cannot be undone if the shop has not started preparing your food.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <textarea
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Reason (optional)"
+            placeholder="Why you're cancelling (optional, min. 3 characters if filled)"
             rows={3}
             maxLength={300}
             className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-2.5 py-2 text-sm outline-none focus-visible:ring-3 dark:bg-input/30"

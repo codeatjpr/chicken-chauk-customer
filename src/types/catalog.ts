@@ -1,10 +1,19 @@
-export type CategoryDto = {
+export type SubCategoryDto = {
   id: string
   name: string
   imageUrl: string | null
   sortOrder: number
+}
+
+export type CategoryDto = {
+  id: string
+  name: string
+  imageUrl: string | null
+  tagline?: string | null
+  sortOrder: number
   isActive: boolean
   _count: { products: number }
+  subCategories: SubCategoryDto[]
 }
 
 export type ProductListItemDto = {
@@ -23,6 +32,7 @@ export type ProductDetailDto = {
   imageUrl: string | null
   isActive: boolean
   category: { id: string; name: string } | null
+  subCategory: { id: string; name: string } | null
 }
 
 export type VendorProductDto = {
@@ -45,6 +55,7 @@ export type VendorProductDto = {
     description: string | null
     imageUrl: string | null
     category: { id: string; name: string } | null
+    subCategory?: { id: string; name: string } | null
   }
 }
 

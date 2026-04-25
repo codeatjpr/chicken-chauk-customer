@@ -1,6 +1,8 @@
 /**
- * Convert HTML-ish strings (e.g. TipTap output: `<p>Hello</p>`) to plain text for previews.
- * React text nodes do not parse HTML — without this, users see raw tags in cards.
+ * Convert HTML to a **single-line** plain string for short previews (cards, clamped text).
+ * Collapses all whitespace, including newlines and gaps between `</p><p>`, by design.
+ * For full product/listing copy on a detail page, use `RichTextBody` or plain text
+ * with `white-space: pre-line` — do not use this for that.
  */
 export function stripHtmlToPlainText(html: string): string {
   const s = html.trim()

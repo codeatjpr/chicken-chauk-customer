@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Layers, Tags } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,7 +12,10 @@ type CommerceProductCardProps = {
   imageUrl?: string | null
   description?: string | null
   categoryName?: string | null
+  subCategoryName?: string | null
   unit?: string | null
+  pieces?: string | null
+  servings?: string | null
   variantLabel?: string | null
   price: number
   mrp?: number | null
@@ -27,7 +31,10 @@ export function CommerceProductCard({
   imageUrl,
   description,
   categoryName,
+  subCategoryName,
   unit,
+  pieces,
+  servings,
   variantLabel,
   price,
   mrp,
@@ -37,6 +44,9 @@ export function CommerceProductCard({
   action,
   className,
 }: CommerceProductCardProps) {
+  const pctOff =
+    mrp != null && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : null
+
   const title = href ? (
     <Link to={href} className="hover:text-primary transition-colors">
       {name}
@@ -54,7 +64,11 @@ export function CommerceProductCard({
     >
       <CardContent className="p-0">
         <div className="flex gap-4 p-4">
-          <div className="from-muted via-muted to-muted/60 size-24 shrink-0 overflow-hidden rounded-2xl bg-linear-to-br">
+          <div
+            className={cn(
+              'from-muted via-muted to-muted/60 shrink-0 overflow-hidden rounded-2xl bg-linear-to-br',
+              'aspect-video w-[min(7.5rem,32vw)] sm:aspect-square sm:size-24',
+            )}>
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -74,8 +88,21 @@ export function CommerceProductCard({
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap gap-2">
-              {categoryName ? <Badge variant="secondary">{categoryName}</Badge> : null}
+              {categoryName ? (
+                <span className="border-primary/25 bg-primary/12 text-primary inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold sm:text-xs">
+                  <Tags className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">{categoryName}</span>
+                </span>
+              ) : null}
+              {subCategoryName ? (
+                <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-sky-800 dark:text-sky-200 sm:text-xs">
+                  <Layers className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">{subCategoryName}</span>
+                </span>
+              ) : null}
               {unit ? <Badge variant="outline">{unit}</Badge> : null}
+              {pieces?.trim() ? <Badge variant="outline">{pieces.trim()}</Badge> : null}
+              {servings?.trim() ? <Badge variant="outline">{servings.trim()}</Badge> : null}
               {variantLabel ? <Badge variant="outline">{variantLabel}</Badge> : null}
               {availabilityLabel ? (
                 <Badge variant={availabilityLabel === 'Available' ? 'secondary' : 'outline'}>
@@ -101,14 +128,22 @@ export function CommerceProductCard({
 
         <div className="bg-muted/40 flex items-center justify-between gap-4 border-t px-4 py-3">
           <div className="min-w-0">
-            <p className="text-lg font-semibold tracking-tight tabular-nums">
-              {formatInr(price)}
-            </p>
+            <div className="flex flex-wrap items-baseline gap-2">
+              <p className="text-lg font-semibold tracking-tight tabular-nums">
+                {formatInr(price)}
+              </p>
+              {pctOff != null && pctOff > 0 ? (
+                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                  {pctOff}% OFF
+                </span>
+              ) : null}
+            </div>
             {mrp != null && mrp > price ? (
-              <p className="text-muted-foreground text-xs">
-                <span className="line-through">{formatInr(mrp)}</span>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                MRP <span className="line-through tabular-nums">{formatInr(mrp)}</span>
               </p>
             ) : null}
+            <p className="text-muted-foreground mt-0.5 text-[10px]">(incl. of all taxes)</p>
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>

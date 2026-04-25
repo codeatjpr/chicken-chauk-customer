@@ -1,9 +1,13 @@
 import type { PaginatedResult } from '@/types/pagination'
 
-export type BannerDto = {
+/** One slide in the home hero carousel (3:1 on all screen sizes; separate mobile/desktop assets optional). */
+export type HeroCarouselSlideDto = {
   id: string
   title: string
   imageUrl: string
+  imageUrlMobile?: string | null
+  imageUrlDesktop?: string | null
+  isClickable?: boolean
   linkType: 'VENDOR' | 'PRODUCT' | 'COUPON' | 'EXTERNAL' | 'STATIC'
   linkId: string | null
   externalUrl: string | null
@@ -34,10 +38,12 @@ export type HomeVendorDto = {
 export type PopularSearchDto = { query: string; count: number }
 
 export type HomeScreenData = {
-  banners: BannerDto[]
+  heroCarousel: HeroCarouselSlideDto[]
   categories: CategoryChipDto[]
   topVendors: HomeVendorDto[]
   popularSearches: PopularSearchDto[]
+  /** Server `CUSTOMER_DISCOVERY_RADIUS_KM` — use for nearby vendor requests. */
+  discoveryRadiusKm: number
 }
 
 export type VendorSearchHit = {
@@ -74,6 +80,7 @@ export type ProductSearchHit = {
     description: string | null
     imageUrl: string | null
     category: { id: string; name: string } | null
+    subCategory: { id: string; name: string } | null
   }
   vendor: {
     id: string

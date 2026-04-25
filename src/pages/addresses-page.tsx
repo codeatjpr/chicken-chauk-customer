@@ -76,6 +76,8 @@ export function AddressesPage() {
           pincode: p.values.pincode,
           latitude: p.values.latitude,
           longitude: p.values.longitude,
+          mapFormattedAddress: p.values.mapFormattedAddress?.trim() || null,
+          plusCode: p.values.plusCode?.trim() || null,
         })
       }
       return addressesApi.createAddress(p.values)
@@ -150,6 +152,13 @@ export function AddressesPage() {
                   <p className="text-muted-foreground mt-0.5 text-xs">
                     {a.city}, {a.state} {a.pincode}
                   </p>
+                  {(a.mapFormattedAddress || a.plusCode) && (
+                    <p className="text-muted-foreground mt-2 border-t border-dashed pt-2 text-[0.7rem] leading-snug">
+                      {a.plusCode ? <span className="text-foreground font-mono">{a.plusCode}</span> : null}
+                      {a.plusCode && a.mapFormattedAddress ? ' · ' : null}
+                      {a.mapFormattedAddress ?? ''}
+                    </p>
+                  )}
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button

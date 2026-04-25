@@ -24,43 +24,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { CommerceProductCard } from '@/components/molecules/commerce-product-card'
 import { CartLineControls } from '@/components/molecules/cart-line-controls'
+import { ProductCard } from '@/components/molecules/product-card'
+import { ProductImageGallery } from '@/components/molecules/product-image-gallery'
 import { buttonVariants } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
 import { categoryPath, vendorPath, vendorProductPath } from '@/constants/routes'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
-import { stripHtmlToPlainText } from '@/lib/html'
+import { pickMerchLabel } from '@/lib/merch-label'
+import { RichTextBody } from '@/components/molecules/rich-text-body'
+import { listingSizeLabel, piecesDisplay, servingsDisplay } from '@/lib/pack-display'
 import { cn } from '@/lib/utils'
 import { fetchVendorProductById, fetchVendorProducts } from '@/services/catalog.service'
 import { formatInr } from '@/utils/format'
-
-function formatPackLine(
-  quantityValue: number | null | undefined,
-  quantityUnit: string | null | undefined,
-): string | null {
-  if (quantityValue == null) return null
-  const u = (quantityUnit ?? '').trim()
-  return u ? `${quantityValue} ${u}` : String(quantityValue)
-}
-
-/** When the shop stores only a number/range, show a clear "Pieces" label. */
-function piecesDisplay(raw: string): string {
-  const t = raw.trim()
-  if (!t) return ''
-  if (/piece|pcs\b|pc\b/i.test(t)) return t
-  return `${t} Pieces`
-}
-
-/** When the shop stores only a range, show a clear "Servings" label. */
-function servingsDisplay(raw: string): string {
-  const t = raw.trim()
-  if (!t) return ''
-  if (/serve/i.test(t)) return t
-  return `${t} Servings`
-}
 
 function shopAddressBlock(v: {
   addressLine: string
@@ -113,10 +91,6 @@ export function VendorProductPage() {
       ? Math.round(((vp.mrp - vp.price) / vp.mrp) * 100)
       : null
 
-  const masterBlurb = vp?.product.description
-    ? stripHtmlToPlainText(vp.product.description).trim()
-    : ''
-
   if (!id) {
     return <p className="text-muted-foreground text-sm">Invalid product link.</p>
   }
@@ -134,8 +108,8 @@ export function VendorProductPage() {
       </div>
 
       {vpQuery.isLoading ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <Skeleton className="aspect-square rounded-3xl" />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-start">
+          <Skeleton className="aspect-4/3 w-full rounded-2xl" />
           <div className="space-y-4">
             <Skeleton className="h-8 w-3/4 rounded-xl" />
             <Skeleton className="h-4 w-1/2 rounded-xl" />
@@ -154,71 +128,83 @@ export function VendorProductPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
-            {/* ── Image ── */}
-            <div className="relative">
-              <div
-                className={cn(
-                  'from-muted via-muted to-muted/60 relative aspect-square overflow-hidden rounded-3xl border bg-linear-to-br shadow-sm',
-                  !isAvailableForPurchase && 'opacity-80',
-                )}
-              >
-                {vp.imageUrl ?? vp.product.imageUrl ? (
-                  <img
-                    src={(vp.imageUrl ?? vp.product.imageUrl)!}
-                    alt={vp.product.name}
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div className="text-muted-foreground flex size-full items-center justify-center text-6xl font-semibold">
-                    {vp.product.name.slice(0, 1)}
-                  </div>
-                )}
-                {discount != null && (
-                  <div className="absolute left-4 top-4 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow">
-                    {discount}% off
-                  </div>
-                )}
-                {!isAvailableForPurchase && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/30 backdrop-blur-[2px]">
-                    <span className="rounded-full bg-black/60 px-4 py-2 text-sm font-semibold text-white">
-                      {!vp.vendor.isOpen
-                        ? 'Shop closed'
-                        : !vp.vendor.isActive
-                          ? 'Shop unavailable'
-                          : 'Unavailable'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-start">
+            <ProductImageGallery
+              urls={[vp.imageUrl, vp.product.imageUrl]}
+              alt={vp.product.name}
+              fallbackLetter={vp.product.name}
+              discountPercent={discount}
+              unavailable={!isAvailableForPurchase}
+              unavailableLabel={
+                !vp.vendor.isOpen
+                  ? 'Shop closed'
+                  : !vp.vendor.isActive
+                    ? 'Shop unavailable'
+                    : 'Unavailable'
+              }
+            />
 
             {/* ── Main copy & buy box ── */}
             <div className="space-y-5">
-              {vp.product.category ? (
-                <Link
-                  to={categoryPath(vp.product.category.id)}
-                  className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
-                >
-                  {vp.product.category.name}
-                </Link>
+              {vp.product.category || vp.product.subCategory ? (
+                <div className="flex flex-wrap items-stretch gap-2 sm:gap-3">
+                  {vp.product.category ? (
+                    <Link
+                      to={categoryPath(vp.product.category.id)}
+                      className={cn(
+                        'border-primary/35 from-primary/15 hover:border-primary/50 focus-visible:ring-primary/30',
+                        'inline-flex min-h-13 min-w-0 max-w-full flex-col justify-center rounded-2xl border bg-linear-to-br to-primary/5',
+                        'px-3 py-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none sm:px-4',
+                      )}
+                    >
+                      <span className="text-primary/80 text-[10px] font-bold uppercase tracking-wider">
+                        Category
+                      </span>
+                      <span className="text-primary mt-0.5 text-sm font-semibold sm:text-base">
+                        {vp.product.category.name}
+                      </span>
+                    </Link>
+                  ) : null}
+                  {vp.product.subCategory && vp.product.category ? (
+                    <Link
+                      to={`${categoryPath(vp.product.category.id)}?sub=${encodeURIComponent(
+                        vp.product.subCategory.id,
+                      )}`}
+                      className={cn(
+                        'border-emerald-500/35 from-emerald-500/12 hover:border-emerald-500/55 focus-visible:ring-emerald-500/30',
+                        'inline-flex min-h-13 min-w-0 max-w-full flex-col justify-center rounded-2xl border border-dashed bg-linear-to-br to-emerald-600/5',
+                        'px-3 py-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none sm:px-4',
+                      )}
+                    >
+                      <span className="text-emerald-800/80 dark:text-emerald-300/90 text-[10px] font-bold uppercase tracking-wider">
+                        Sub-category
+                      </span>
+                      <span className="mt-0.5 text-sm font-semibold text-emerald-950 dark:text-emerald-100 sm:text-base">
+                        {vp.product.subCategory.name}
+                      </span>
+                    </Link>
+                  ) : null}
+                </div>
               ) : null}
 
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   {vp.product.name}
                 </h1>
-                {masterBlurb ? (
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{masterBlurb}</p>
+                {vp.product.description?.trim() ? (
+                  <RichTextBody
+                    source={vp.product.description}
+                    className="text-muted-foreground mt-3"
+                  />
                 ) : null}
               </div>
 
-              {(formatPackLine(vp.quantityValue, vp.quantityUnit) || vp.pieces || vp.servings) && (
+              {(listingSizeLabel(vp.quantityValue, vp.quantityUnit) || vp.pieces || vp.servings) && (
                 <div className="flex flex-wrap gap-2">
-                  {formatPackLine(vp.quantityValue, vp.quantityUnit) ? (
+                  {listingSizeLabel(vp.quantityValue, vp.quantityUnit) ? (
                     <span className="bg-muted/80 text-muted-foreground inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm">
                       <Scale className="size-4 shrink-0 opacity-70" aria-hidden />
-                      {formatPackLine(vp.quantityValue, vp.quantityUnit)}
+                      {listingSizeLabel(vp.quantityValue, vp.quantityUnit)}
                     </span>
                   ) : null}
                   {vp.pieces ? (
@@ -257,7 +243,7 @@ export function VendorProductPage() {
                     <p className="text-muted-foreground text-xs">(incl. of all taxes)</p>
                   )}
                 </div>
-                <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+                <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
                   <CartLineControls
                     cart={cart}
                     vendorProductId={vp.id}
@@ -268,6 +254,7 @@ export function VendorProductPage() {
                     onAdd={(qty) => addWithSwitch(vp.vendor.id, vp.id, qty)}
                     onUpdateQty={updateQty}
                     onRemove={removeLine}
+                    prominentAdd
                   />
                   {!isAvailableForPurchase && (
                     <p className="text-muted-foreground text-right text-xs">
@@ -355,14 +342,11 @@ export function VendorProductPage() {
             </div>
           </div>
 
-          {/* ── Full listing description (shop-specific HTML only) ── */}
+          {/* Shop-specific listing copy (master product copy stays in the column above) */}
           {vp.description?.trim() ? (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold tracking-tight">About this listing</h2>
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground"
-                dangerouslySetInnerHTML={{ __html: vp.description }}
-              />
+              <RichTextBody source={vp.description} className="text-muted-foreground" />
             </section>
           ) : null}
 
@@ -378,47 +362,57 @@ export function VendorProductPage() {
               </Link>
             </div>
             {similarQuery.isLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-36 rounded-2xl" />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="aspect-3/4 rounded-xl" />
                 ))}
               </div>
             ) : similarItems.length === 0 ? (
               <p className="text-muted-foreground text-sm">No other items from this shop yet.</p>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {similarItems.map((row) => (
-                  <CommerceProductCard
-                    key={row.id}
-                    name={row.product.name}
-                    href={vendorProductPath(row.id)}
-                    imageUrl={row.imageUrl ?? row.product.imageUrl}
-                    description={row.product.description}
-                    categoryName={row.product.category?.name}
-                    unit={row.quantityUnit ?? ''}
-                    price={row.price}
-                    mrp={row.mrp}
-                    availabilityLabel={
-                      row.isAvailable && vp.vendor.isOpen ? 'Available' : 'Unavailable'
-                    }
-                    meta={
-                      <p className="text-muted-foreground text-xs line-clamp-1">{vp.vendor.name}</p>
-                    }
-                    action={
-                      <CartLineControls
-                        cart={cart}
-                        vendorProductId={row.id}
-                        maxQty={Math.max(0, row.stock)}
-                        isAvailable={row.isAvailable && vp.vendor.isOpen}
-                        isAdding={addIsPending}
-                        isUpdating={updateIsPending}
-                        onAdd={(qty) => addWithSwitch(vp.vendor.id, row.id, qty)}
-                        onUpdateQty={updateQty}
-                        onRemove={removeLine}
-                      />
-                    }
-                  />
-                ))}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {similarItems.map((row, i) => {
+                  const weightLabel =
+                    row.quantityValue != null
+                      ? `${row.quantityValue}${row.quantityUnit ?? ''}`.trim()
+                      : null
+                  return (
+                    <ProductCard
+                      key={row.id}
+                      variant="minimal"
+                      plpStyle
+                      to={vendorProductPath(row.id)}
+                      favoriteProductId={row.product.id}
+                      name={row.product.name}
+                      imageUrl={row.imageUrl ?? row.product.imageUrl}
+                      description={row.description ?? row.product.description}
+                      categoryName={row.product.category?.name ?? null}
+                      subCategoryName={row.product.subCategory?.name ?? null}
+                      vendorName={vp.vendor.name}
+                      merchLabel={pickMerchLabel(row.id, i)}
+                      packInfo={{
+                        weightLabel: weightLabel || null,
+                        pieces: row.pieces ?? null,
+                        servings: row.servings ?? null,
+                      }}
+                      price={row.price}
+                      mrp={row.mrp}
+                      cartAction={
+                        <CartLineControls
+                          cart={cart}
+                          vendorProductId={row.id}
+                          maxQty={Math.max(0, row.stock)}
+                          isAvailable={row.isAvailable && vp.vendor.isOpen}
+                          isAdding={addIsPending}
+                          isUpdating={updateIsPending}
+                          onAdd={(qty) => addWithSwitch(vp.vendor.id, row.id, qty)}
+                          onUpdateQty={updateQty}
+                          onRemove={removeLine}
+                        />
+                      }
+                    />
+                  )
+                })}
               </div>
             )}
           </section>

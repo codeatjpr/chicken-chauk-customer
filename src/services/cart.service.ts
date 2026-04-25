@@ -1,7 +1,7 @@
 import { axiosInstance } from '@/lib/axiosInstance'
 import type { ApiSuccess } from '@/types/api'
 import type { CartSummaryDto } from '@/types/cart'
-import type { CartValidationResultDto, PaymentMethodDto } from '@/types/order'
+import type { CartValidationResultDto } from '@/types/order'
 
 export async function clearCart(): Promise<void> {
   const { data } = await axiosInstance.delete<ApiSuccess<null>>('/cart')
@@ -50,7 +50,6 @@ export async function updateCartItem(
 
 export async function validateCartForCheckout(body: {
   deliveryAddressId: string
-  paymentMethod: PaymentMethodDto
   couponCode?: string
   walletAmountToUse?: number
 }): Promise<CartValidationResultDto> {

@@ -127,7 +127,7 @@ export function OrderRatingSection({
         <h2 className="text-sm font-semibold tracking-tight">Your review</h2>
         <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
           {existing.vendorRating != null && (
-            <li>Vendor: {existing.vendorRating}/5</li>
+            <li>Shop: {existing.vendorRating}/5</li>
           )}
           {existing.productQualityRating != null && (
             <li>Food quality: {existing.productQualityRating}/5</li>
@@ -153,7 +153,7 @@ export function OrderRatingSection({
       <p className="text-muted-foreground text-xs">
         Pick at least one category. Tap again on the same star to clear that row.
       </p>
-      <StarRow label="Vendor" value={vendorStars} onChange={setVendorStars} />
+      <StarRow label="Shop" value={vendorStars} onChange={setVendorStars} />
       <StarRow
         label="Food quality"
         value={productStars}
@@ -174,6 +174,7 @@ export function OrderRatingSection({
           onChange={(e) => setComment(e.target.value)}
           maxLength={500}
           rows={3}
+          placeholder="What went well or what could improve? (optional)"
           className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-2.5 py-2 text-sm outline-none focus-visible:ring-3 dark:bg-input/30"
         />
       </div>

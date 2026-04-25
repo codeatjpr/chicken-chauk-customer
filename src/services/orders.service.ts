@@ -43,7 +43,6 @@ export async function validateAndPlaceOrder(params: {
   const walletAmountToUse = params.walletAmountToUse ?? 0
   const validation = await validateCartForCheckout({
     deliveryAddressId: params.deliveryAddressId,
-    paymentMethod: params.paymentMethod,
     couponCode: params.couponCode,
     walletAmountToUse,
   })
@@ -92,6 +91,17 @@ export async function cancelOrder(
   )
   if (!data.success || !data.data) {
     throw new Error(data.message ?? 'Could not cancel order')
+  }
+  return data.data
+}
+
+/** User closed Razorpay without paying — cancels the unpaid order and restores the bag */
+export async function abandonUnpaidCheckout(id: string): Promise<OrderDetailDto> {
+  const { data } = await axiosInstance.post<ApiSuccess<OrderDetailDto>>(
+    `/orders/${id}/abandon-unpaid-checkout`,
+  )
+  if (!data.success || !data.data) {
+    throw new Error(data.message ?? 'Could not restore checkout')
   }
   return data.data
 }

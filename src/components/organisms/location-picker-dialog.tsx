@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { LocationSearchMap } from '@/components/organisms/location-search-map'
+import { formatShortCoordLabel } from '@/lib/location-label'
 import type { LocationSelection } from '@/types/location'
 import { useLocationStore } from '@/stores/location-store'
 import { toast } from 'sonner'
@@ -45,7 +46,10 @@ export function LocationPickerDialog({
     }
     const cityForApi = selectedSpot?.city?.trim() || city
     const labelForHeader =
-      selectedSpot?.displayName?.trim() || displayLabel.trim() || cityForApi
+      selectedSpot?.displayName?.trim() ||
+      displayLabel.trim() ||
+      cityForApi ||
+      formatShortCoordLabel(draftLat, draftLng)
     setLocation(cityForApi, draftLat, draftLng, labelForHeader)
     toast.success('Location updated')
     onOpenChange(false)

@@ -126,6 +126,7 @@ function CrumbList({ crumbs }: { crumbs: Crumb[] }) {
 const STATIC_CRUMBS: Record<string, Crumb[]> = {
   [ROUTES.browse]: [{ label: "Products" }],
   [ROUTES.search]: [{ label: "Search" }],
+  [ROUTES.stores]: [{ label: "Shops near you" }],
   [ROUTES.cart]: [{ label: "Cart" }],
   [ROUTES.checkout]: [{ label: "Cart", to: ROUTES.cart }, { label: "Checkout" }],
   [ROUTES.orders]: [{ label: "Orders" }],

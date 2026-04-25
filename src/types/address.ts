@@ -11,6 +11,8 @@ export type UserAddressDto = {
   pincode: string
   latitude: number
   longitude: number
+  mapFormattedAddress: string | null
+  plusCode: string | null
   isDefault: boolean
   createdAt: string
 }

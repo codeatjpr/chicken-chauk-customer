@@ -58,8 +58,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,ico,woff2,png}"],
       },
+      // Service worker + precache in dev targets `dev-dist`, which often has no matching
+      // static assets yet — triggers workbox "glob doesn't match" noise. Use `vite preview`
+      // or a production build to verify installability (manifest + SW still apply there).
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
     }),
   ],

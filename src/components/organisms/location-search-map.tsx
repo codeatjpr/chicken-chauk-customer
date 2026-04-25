@@ -9,7 +9,7 @@ import {
   reverseGeocodeLatLng,
   type AutocompleteHit,
 } from '@/lib/google-places-client'
-import { splitLocationDisplay } from '@/lib/location-label'
+import { formatShortCoordLabel, splitLocationDisplay } from '@/lib/location-label'
 import { cn } from '@/lib/utils'
 import type { LocationSelection } from '@/types/location'
 
@@ -38,6 +38,8 @@ type LocationSearchInnerProps = {
   className?: string
   label?: string
   description?: string
+  /** Placeholder for the address search field */
+  searchPlaceholder?: string
 }
 
 function LocationSearchInner({
@@ -51,6 +53,7 @@ function LocationSearchInner({
   className,
   label = 'Your location',
   description,
+  searchPlaceholder = 'Search area, street, or landmark…',
 }: LocationSearchInnerProps) {
   const prevPropsLatLng = useRef({ lat: latitude, lng: longitude })
   /** Places API (New): token must be URL-safe; 32-char hex avoids INVALID_ARGUMENT on some keys. */
@@ -103,7 +106,7 @@ function LocationSearchInner({
         applySelection({
           latitude: lat,
           longitude: lng,
-          displayName: 'Current location',
+          displayName: formatShortCoordLabel(lat, lng),
         })
       } finally {
         setLookupLoading(false)
@@ -244,7 +247,7 @@ function LocationSearchInner({
           <Input
             value={searchText}
             onChange={(e) => onSearchTextChange(e.target.value)}
-            placeholder="Search a new address"
+            placeholder={searchPlaceholder}
             className="border-input bg-muted/30 h-10 max-w-full rounded-xl pr-9 pl-9 text-sm"
             autoComplete="off"
             spellCheck={false}
@@ -392,6 +395,7 @@ type LocationSearchMapProps = {
   className?: string
   label?: string
   description?: string
+  searchPlaceholder?: string
 }
 
 export function LocationSearchMap(props: LocationSearchMapProps) {

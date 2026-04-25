@@ -1,3 +1,4 @@
+import { formatShortCoordLabel } from '@/lib/location-label'
 import type { LocationSelection } from '@/types/location'
 
 const AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete'
@@ -49,6 +50,55 @@ type GeocodeResponse = {
   results?: GeocodeResult[]
   /** Present when status is not OK (e.g. REQUEST_DENIED). */
   error_message?: string
+}
+
+type NominatimReverseJson = {
+  display_name?: string
+  address?: Record<string, string>
+}
+
+async function nominatimReverse(lat: number, lng: number): Promise<LocationSelection | null> {
+  const url = new URL('https://nominatim.openstreetmap.org/reverse')
+  url.searchParams.set('lat', String(lat))
+  url.searchParams.set('lon', String(lng))
+  url.searchParams.set('format', 'json')
+  url.searchParams.set('addressdetails', '1')
+
+  try {
+    const res = await fetch(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'ChickenChaukCustomer/1.0',
+      },
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as NominatimReverseJson
+    const addr = data.address ?? {}
+    const city =
+      addr.city ??
+      addr.town ??
+      addr.village ??
+      addr.municipality ??
+      addr.county ??
+      addr.state_district
+    const state = addr.state
+    const rawPost = addr.postcode
+    const pincode = rawPost ? rawPost.replace(/\D/g, '').slice(0, 6) : undefined
+    const displayName =
+      data.display_name?.trim() || formatShortCoordLabel(lat, lng)
+
+    return {
+      latitude: lat,
+      longitude: lng,
+      displayName,
+      city,
+      state,
+      pincode,
+      area: addr.suburb ?? addr.neighbourhood ?? city,
+    }
+  } catch {
+    return null
+  }
 }
 
 function pickComponent(
@@ -281,11 +331,12 @@ export async function reverseGeocodeLatLng(
     } else {
       console.warn('[geocoding] No address for coordinates:', data.status, data.error_message ?? '')
     }
+    const fromOsm = await nominatimReverse(lat, lng)
+    if (fromOsm) return fromOsm
     return {
       latitude: lat,
       longitude: lng,
-      // Coordinates are still valid for delivery; formatted address needs Geocoding API enabled on the key.
-      displayName: 'Current location',
+      displayName: formatShortCoordLabel(lat, lng),
     }
   }
 

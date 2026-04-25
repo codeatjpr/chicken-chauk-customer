@@ -1,9 +1,12 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 type CategoryPillProps = {
   label: string
   imageUrl?: string | null
+  /** When set, shown inside the circle instead of the image (e.g. “All” grid icon). */
+  leadingIcon?: ReactNode
   active?: boolean
   to?: string
   onClick?: () => void
@@ -13,17 +16,21 @@ type CategoryPillProps = {
 function CategoryPillContent({
   label,
   imageUrl,
+  leadingIcon,
   active,
-}: Pick<CategoryPillProps, 'label' | 'imageUrl' | 'active'>) {
+}: Pick<CategoryPillProps, 'label' | 'imageUrl' | 'leadingIcon' | 'active'>) {
   return (
     <>
       <div
         className={cn(
           'bg-muted flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-black/5 dark:ring-white/10',
-          active && 'ring-primary/25 bg-primary/5',
         )}
       >
-        {imageUrl ? (
+        {leadingIcon ? (
+          <span className="text-muted-foreground flex size-full items-center justify-center">
+            {leadingIcon}
+          </span>
+        ) : imageUrl ? (
           <img
             src={imageUrl}
             alt=""
@@ -37,7 +44,11 @@ function CategoryPillContent({
           </span>
         )}
       </div>
-      <span className="line-clamp-1 min-w-0 text-sm font-medium">{label}</span>
+      <span
+        className={cn('line-clamp-1 min-w-0 text-sm font-semibold text-foreground', active && 'font-bold')}
+      >
+        {label}
+      </span>
     </>
   )
 }
@@ -45,6 +56,7 @@ function CategoryPillContent({
 export function CategoryPill({
   label,
   imageUrl,
+  leadingIcon,
   active = false,
   to,
   onClick,
@@ -53,22 +65,32 @@ export function CategoryPill({
   const classes = cn(
     'inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-all',
     active
-      ? 'border-primary/30 bg-primary/10 text-primary shadow-sm'
-      : 'border-border/80 bg-card hover:border-primary/20 hover:bg-muted/60',
+      ? 'border-border bg-muted/70 text-foreground shadow-sm'
+      : 'border-border/80 bg-card hover:bg-muted/60',
     className,
   )
 
   if (to) {
     return (
       <Link to={to} className={classes}>
-        <CategoryPillContent label={label} imageUrl={imageUrl} active={active} />
+        <CategoryPillContent
+          label={label}
+          imageUrl={imageUrl}
+          leadingIcon={leadingIcon}
+          active={active}
+        />
       </Link>
     )
   }
 
   return (
     <button type="button" className={classes} onClick={onClick}>
-      <CategoryPillContent label={label} imageUrl={imageUrl} active={active} />
+      <CategoryPillContent
+        label={label}
+        imageUrl={imageUrl}
+        leadingIcon={leadingIcon}
+        active={active}
+      />
     </button>
   )
 }

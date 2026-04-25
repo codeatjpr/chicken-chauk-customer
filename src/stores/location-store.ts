@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { sanitizeLocationDisplayText } from '@/lib/location-label'
 
 const DEFAULT_CITY = 'Delhi'
 const DEFAULT_LAT = 28.6139
@@ -28,7 +29,7 @@ export const useLocationStore = create<LocationState>()(
       setLocation: (city, latitude, longitude, displayLabel) =>
         set({
           city,
-          displayLabel: displayLabel?.trim() || city,
+          displayLabel: sanitizeLocationDisplayText(displayLabel?.trim() || city),
           latitude,
           longitude,
         }),

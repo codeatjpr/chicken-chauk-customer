@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { Grid2x2, PackageSearch } from 'lucide-react'
-import { useEffect, useMemo, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { Grid2x2, PackageSearch, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,13 +15,13 @@ import {
 import { CartLineControls } from '@/components/molecules/cart-line-controls'
 import { CategoryPill } from '@/components/molecules/category-pill'
 import { ProductCard } from '@/components/molecules/product-card'
-import {
-  ProductGrid,
-  ProductGridEmptyState,
-  ProductGridSkeleton,
-} from '@/components/organisms/product-grid'
+import { ProductGridEmptyState } from '@/components/organisms/product-grid'
+import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
 import { vendorProductPath } from '@/constants/routes'
+import { pickMerchLabel } from '@/lib/merch-label'
+import { sortByPlp } from '@/lib/plp-sort'
+import { useInfiniteScrollSentinel } from '@/hooks/use-infinite-scroll-sentinel'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import * as catalogApi from '@/services/catalog.service'
 import { fetchDiscoveryProducts } from '@/services/discovery.service'
@@ -29,8 +29,10 @@ import { useLocationStore } from '@/stores/location-store'
 
 export function CategoryProductsPage() {
   const { categoryId = '' } = useParams<{ categoryId: string }>()
+  const [searchParams] = useSearchParams()
   const loadMoreRef = useRef<HTMLDivElement>(null)
-  const { city } = useLocationStore()
+  const { city, latitude, longitude } = useLocationStore()
+  const [subCategoryId, setSubCategoryId] = useState<string | null>(null)
 
   const {
     cart,
@@ -51,11 +53,20 @@ export function CategoryProductsPage() {
   })
 
   const productsQuery = useInfiniteQuery({
-    queryKey: queryKeys.discovery.products(city, categoryId),
+    queryKey: queryKeys.discovery.products(
+      city,
+      latitude,
+      longitude,
+      categoryId,
+      subCategoryId,
+    ),
     queryFn: ({ pageParam }) =>
       fetchDiscoveryProducts({
         city,
+        latitude,
+        longitude,
         categoryId,
+        ...(subCategoryId ? { subCategoryId } : {}),
         page: pageParam,
         limit: 24,
       }),
@@ -68,22 +79,38 @@ export function CategoryProductsPage() {
     () => productsQuery.data?.pages.flatMap((p) => p.items) ?? [],
     [productsQuery.data],
   )
+  const total = productsQuery.data?.pages[0]?.total ?? items.length
+  const sortedItems = useMemo(() => sortByPlp(items, 'relevance'), [items])
+
+  const cat = categoryQuery.data
+  const subCategories = cat?.subCategories ?? []
+  const activeSubCategoryName = useMemo(() => {
+    if (!subCategoryId) return null
+    return subCategories.find((s) => s.id === subCategoryId)?.name ?? null
+  }, [subCategories, subCategoryId])
 
   useEffect(() => {
-    const el = loadMoreRef.current
-    if (!el || !productsQuery.hasNextPage || productsQuery.isFetchingNextPage)
-      return
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          void productsQuery.fetchNextPage()
-        }
-      },
-      { rootMargin: '100px' },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [productsQuery, items.length])
+    setSubCategoryId(null)
+  }, [categoryId])
+
+  useEffect(() => {
+    const sub = searchParams.get('sub')?.trim()
+    if (!sub) return
+    const subs = categoryQuery.data?.subCategories ?? []
+    if (subs.some((s) => s.id === sub)) {
+      setSubCategoryId(sub)
+    }
+  }, [searchParams, categoryQuery.data?.subCategories, categoryId])
+
+  const scrollWatchKey = `${categoryId}-${subCategoryId ?? ''}-${productsQuery.dataUpdatedAt}-${items.length}`
+
+  useInfiniteScrollSentinel(loadMoreRef, {
+    enabled: Boolean(cat) && items.length > 0 && !productsQuery.isLoading,
+    hasNextPage: productsQuery.hasNextPage,
+    isFetchingNextPage: productsQuery.isFetchingNextPage,
+    fetchNextPage: productsQuery.fetchNextPage,
+    watchKey: scrollWatchKey,
+  })
 
   if (!categoryId) {
     return (
@@ -91,116 +118,141 @@ export function CategoryProductsPage() {
     )
   }
 
-  const cat = categoryQuery.data
-
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-4 pb-10">
       {categoryQuery.isLoading ? (
-        <ProductGridSkeleton count={1} className="grid-cols-1" />
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-56 rounded-md" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+        </div>
       ) : categoryQuery.isError || !cat ? (
         <p className="text-destructive text-sm">Category not found.</p>
       ) : (
-        <section className="from-primary/10 via-background to-background border-border/60 overflow-hidden rounded-3xl border bg-linear-to-br p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <CategoryPill
-                label={cat.name}
-                imageUrl={cat.imageUrl}
-                active
-                className="mb-3"
-              />
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                {cat.name}
-              </h1>
-              <p className="text-muted-foreground mt-2 text-sm leading-relaxed sm:text-base">
-                Tap any listing to view full details, vendor info, and add to
-                your cart directly.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:max-w-xs">
-              <div className="bg-background/80 rounded-2xl border px-4 py-3 backdrop-blur-sm">
-                <p className="text-muted-foreground text-xs">Catalog size</p>
-                <p className="text-lg font-semibold tabular-nums">
-                  {cat._count.products}
-                </p>
-              </div>
-              <div className="bg-background/80 rounded-2xl border px-4 py-3 backdrop-blur-sm">
-                <p className="text-muted-foreground text-xs">Collection</p>
-                <p className="text-sm font-semibold">Category spotlight</p>
-              </div>
-            </div>
+        <>
+          <div>
+            <h1 className="text-primary text-2xl font-semibold tracking-tight sm:text-3xl">
+              {cat.name}
+            </h1>
+            {cat.tagline ? (
+              <p className="text-muted-foreground mt-2 text-sm sm:text-base">{cat.tagline}</p>
+            ) : null}
           </div>
-        </section>
+
+          {subCategories.length > 0 ? (
+            <div className="space-y-3">
+              <div className="no-scrollbar -mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 pt-1">
+                <CategoryPill
+                  label="All"
+                  active={subCategoryId === null}
+                  onClick={() => setSubCategoryId(null)}
+                  leadingIcon={<Grid2x2 className="size-4" aria-hidden />}
+                  className="shrink-0"
+                />
+                {subCategories.map((s) => {
+                  const active = subCategoryId === s.id
+                  return (
+                    <CategoryPill
+                      key={s.id}
+                      label={s.name}
+                      imageUrl={s.imageUrl}
+                      active={active}
+                      onClick={() => setSubCategoryId(s.id)}
+                      className="shrink-0"
+                    />
+                  )
+                })}
+              </div>
+              {subCategoryId && activeSubCategoryName ? (
+                <div className="flex flex-wrap items-center gap-2 px-1">
+                  <span className="bg-primary/12 text-primary border-primary/35 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm">
+                    {activeSubCategoryName}
+                    <button
+                      type="button"
+                      onClick={() => setSubCategoryId(null)}
+                      className="hover:bg-primary/15 -me-0.5 rounded-full p-0.5"
+                      aria-label="Clear subcategory filter">
+                      <X className="size-3.5" />
+                    </button>
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    Showing {sortedItems.length} of {total}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-muted-foreground px-1 text-xs">
+                  Showing {sortedItems.length} of {total}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Showing {sortedItems.length} of {total}
+            </p>
+          )}
+        </>
       )}
 
-      {productsQuery.isLoading ? (
-        <ProductGridSkeleton count={6} />
-      ) : productsQuery.isError ? (
+      {cat && productsQuery.isLoading ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square rounded-xl" />
+          ))}
+        </div>
+      ) : cat && productsQuery.isError ? (
         <p className="text-destructive text-sm">Could not load products.</p>
-      ) : items.length === 0 ? (
+      ) : cat && items.length === 0 ? (
         <ProductGridEmptyState
           icon={PackageSearch}
           title="No products in this category yet"
           description="We couldn't find anything live in this collection right now."
         />
-      ) : (
+      ) : cat ? (
         <>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Products in {cat?.name ?? 'this category'}
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Browse vendor listings in this category.
-              </p>
-            </div>
-            <div className="text-muted-foreground hidden items-center gap-2 text-sm sm:flex">
-              <Grid2x2 className="size-4" />
-              {items.length} shown
-            </div>
-          </div>
-
-          <ProductGrid>
-            {items.map((p) => {
-              const qtyParts = [
-                p.quantityValue ? `${p.quantityValue}${p.quantityUnit ?? ''}` : null,
-                p.pieces ?? null,
-                p.servings ?? null,
-              ].filter(Boolean)
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {sortedItems.map((p, i) => {
+              const weightLabel =
+                p.quantityValue != null
+                  ? `${p.quantityValue}${p.quantityUnit ?? ''}`.trim()
+                  : null
               return (
-              <ProductCard
-                key={p.id}
-                to={vendorProductPath(p.id)}
-                favoriteProductId={p.product.id}
-                name={p.product.name}
-                imageUrl={p.imageUrl ?? p.product.imageUrl}
-                description={p.product.description}
-                categoryName={p.product.category?.name}
-                unit={p.quantityUnit ?? ''}
-                vendorName={p.vendor.name}
-                price={p.price}
-                mrp={p.mrp}
-                eyebrow="Live offer"
-                badges={!p.vendor.isOpen ? ['Vendor closed'] : []}
-                meta={qtyParts.length > 0 ? (
-                  <p className="text-muted-foreground text-xs">{qtyParts.join(' · ')}</p>
-                ) : undefined}
-                cartAction={
-                  <CartLineControls
-                    cart={cart}
-                    vendorProductId={p.id}
-                    maxQty={p.stock ?? 999}
-                    isAvailable={p.isAvailable && p.vendor.isOpen}
-                    isAdding={addIsPending}
-                    isUpdating={updateIsPending}
-                    onAdd={(qty) => addWithSwitch(p.vendor.id, p.id, qty)}
-                    onUpdateQty={updateQty}
-                    onRemove={removeLine}
-                  />
-                }
-              />
-            )})}
-          </ProductGrid>
+                <ProductCard
+                  key={p.id}
+                  variant="minimal"
+                  plpStyle
+                  listLayout={false}
+                  to={vendorProductPath(p.id)}
+                  favoriteProductId={p.product.id}
+                  name={p.product.name}
+                  imageUrl={p.imageUrl ?? p.product.imageUrl}
+                  description={p.description ?? p.product.description}
+                  categoryName={p.product.category?.name ?? cat.name}
+                  subCategoryName={p.product.subCategory?.name ?? null}
+                  vendorName={p.vendor.name}
+                  merchLabel={pickMerchLabel(p.id, i)}
+                  packInfo={{
+                    weightLabel: weightLabel || null,
+                    pieces: p.pieces ?? null,
+                    servings: p.servings ?? null,
+                  }}
+                  price={p.price}
+                  mrp={p.mrp}
+                  cartAction={
+                    <CartLineControls
+                      cart={cart}
+                      vendorProductId={p.id}
+                      maxQty={p.stock ?? 999}
+                      isAvailable={p.isAvailable && p.vendor.isOpen}
+                      isAdding={addIsPending}
+                      isUpdating={updateIsPending}
+                      onAdd={(qty) => addWithSwitch(p.vendor.id, p.id, qty)}
+                      onUpdateQty={updateQty}
+                      onRemove={removeLine}
+                    />
+                  }
+                />
+              )
+            })}
+          </div>
           <div ref={loadMoreRef} className="h-8" />
           {productsQuery.isFetchingNextPage && (
             <p className="text-muted-foreground py-4 text-center text-xs">
@@ -208,14 +260,14 @@ export function CategoryProductsPage() {
             </p>
           )}
         </>
-      )}
+      ) : null}
 
       <AlertDialog open={switchOpen} onOpenChange={setSwitchOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Start a new cart?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your cart has items from another vendor. Continuing will clear your current cart.
+              Your cart has items from another shop. Continuing will clear your current cart.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -226,6 +278,11 @@ export function CategoryProductsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   )
 }

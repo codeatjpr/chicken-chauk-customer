@@ -7,16 +7,13 @@ import {
   Loader2Icon,
   LogOut,
   MapPin,
-  Moon,
-  Monitor,
   Package,
-  Sun,
+  Pencil,
   User,
   Wallet,
 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { useTheme } from 'next-themes'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -31,8 +28,7 @@ import * as profileApi from '@/services/profile.service'
 import { useAuthStore } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/utils/api-error'
 import { formatInr } from '@/utils/format'
-import { cn } from '@/lib/utils'
-import { maskPhoneForOtpStep } from '@/utils/phone'
+import { formatIndianMobileDisplay, maskPhoneForOtpStep } from '@/utils/phone'
 
 type ProfileForm = { name: string; email: string }
 
@@ -45,20 +41,12 @@ const NAV_LINKS = [
   { to: ROUTES.help, label: 'Help', icon: HelpCircle, desc: 'Support and FAQs' },
 ] as const
 
-const THEME_OPTIONS = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
-] as const
-
 export function ProfilePage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
   const signOut = useAuthStore((s) => s.signOut)
-  const { theme, setTheme } = useTheme()
-
   const statsQuery = useQuery({
     queryKey: queryKeys.profile.stats,
     queryFn: () => profileApi.fetchProfileWithStats(),
@@ -151,12 +139,22 @@ export function ProfilePage() {
                 <>
                   <p className="text-lg font-semibold">{profile?.name ?? user?.name ?? 'My Account'}</p>
                   <p className="text-muted-foreground text-sm">
-                    {user?.phone ? `+91 ${maskPhoneForOtpStep(user.phone)}` : ''}
+                    {user?.phone ? maskPhoneForOtpStep(user.phone) : ''}
                     {profile?.email ? ` · ${profile.email}` : ''}
                   </p>
                 </>
               )}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={() => document.getElementById('profile-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              <Pencil className="size-3.5" />
+              Edit
+            </Button>
           </div>
 
           {/* Stats */}
@@ -221,7 +219,7 @@ export function ProfilePage() {
         <div className="mt-5 lg:mt-0 lg:col-start-1 lg:row-start-2 space-y-5">
 
           {/* Profile edit form */}
-          <div className="border-border/70 bg-card rounded-2xl border p-5 space-y-4">
+          <div id="profile-details" className="border-border/70 bg-card scroll-mt-28 rounded-2xl border p-5 space-y-4">
             <div>
               <h2 className="font-semibold">Profile details</h2>
               <p className="text-muted-foreground mt-0.5 text-sm">How we reach you</p>
@@ -230,13 +228,13 @@ export function ProfilePage() {
             <div>
               <p className="text-muted-foreground text-xs">Mobile number</p>
               <p className="mt-0.5 font-medium">
-                {user?.phone ? `+91 ${user.phone}` : '—'}
+                {user?.phone ? formatIndianMobileDisplay(user.phone) : '—'}
               </p>
             </div>
             <form onSubmit={onSaveProfile} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="prof-name">Display name</Label>
-                <Input id="prof-name" placeholder="Your name" {...form.register('name')} />
+                <Input id="prof-name" placeholder="e.g. Priya Sharma" {...form.register('name')} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="prof-email">Email (optional)</Label>
@@ -253,32 +251,6 @@ export function ProfilePage() {
                 Save changes
               </Button>
             </form>
-          </div>
-
-          {/* Appearance */}
-          <div className="border-border/70 bg-card rounded-2xl border p-5 space-y-3">
-            <div>
-              <h2 className="font-semibold">Appearance</h2>
-              <p className="text-muted-foreground mt-0.5 text-sm">Choose your preferred theme</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setTheme(value)}
-                  className={cn(
-                    'flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-xs font-medium transition-colors',
-                    theme === value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border/60 hover:bg-muted/60',
-                  )}
-                >
-                  <Icon className="size-5" />
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Sign out */}

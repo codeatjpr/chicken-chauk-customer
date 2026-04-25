@@ -1,36 +1,22 @@
 import {
   Apple,
+  ArrowRight,
+  Download,
   Globe,
+  LayoutGrid,
   MapPin,
   MessageCircleMore,
   Phone,
+  Search,
   Smartphone,
+  Store,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import logoMark from '@/assets/logo.png'
-import nameLogo from '@/assets/name_logo.png'
+import { brandLogo } from '@/constants/brand-assets'
+import { APP_STORE_URL, PLAY_STORE_URL } from '@/constants/app-links'
 import { ROUTES } from '@/constants/routes'
-
-const footerSections = [
-  {
-    title: 'Explore',
-    links: [
-      { label: 'Home', to: ROUTES.home },
-      { label: 'All products', to: ROUTES.browse },
-      { label: 'Search', to: ROUTES.search },
-      { label: 'Help', to: ROUTES.help },
-    ],
-  },
-  {
-    title: 'Your account',
-    links: [
-      { label: 'Orders', to: ROUTES.orders },
-      { label: 'Favorites', to: ROUTES.favorites },
-      { label: 'Wallet', to: ROUTES.wallet },
-      { label: 'Profile', to: ROUTES.profile },
-    ],
-  },
-] as const
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const socialIcons = [Globe, MessageCircleMore, Phone, Smartphone] as const
 
@@ -39,85 +25,131 @@ type SiteFooterProps = {
 }
 
 export function SiteFooter({ locationLabel }: SiteFooterProps) {
+  const hasAppStore = Boolean(APP_STORE_URL)
+
   return (
-    <footer className="border-border/70 bg-card/40 rounded-[2rem] border px-5 py-8 shadow-sm sm:px-8">
-      <div className="grid gap-8 lg:grid-cols-[1.2fr_repeat(2,minmax(0,0.8fr))_1fr]">
-        <div className="space-y-4">
-          <Link to={ROUTES.home} className="inline-flex items-center gap-3">
+    <footer className="border-border/60 from-card/80 to-muted/30 rounded-[2rem] border bg-linear-to-b px-5 py-10 shadow-sm sm:px-8 lg:py-12">
+      <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
+        <div className="space-y-4 lg:col-span-5">
+          <Link to={ROUTES.home} className="inline-flex items-center">
             <img
-              src={logoMark}
-              alt="Chicken Chauk"
-              className="size-12 rounded-2xl object-contain"
-            />
-            <img
-              src={nameLogo}
-              alt="Chicken Chauk"
-              className="hidden h-9 w-auto object-contain sm:block"
+              src={brandLogo}
+              alt="ChickenChauk"
+              className="h-14 w-auto max-w-[260px] object-contain sm:h-16"
             />
           </Link>
-          <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">
-            A modern meat marketplace for fresh chicken, mutton, seafood, eggs,
-            and daily essentials delivered around {locationLabel}.
+          <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+            Fresh chicken, mutton, seafood, and essentials from trusted shops — delivered around{' '}
+            {locationLabel}.
           </p>
           <div className="text-muted-foreground inline-flex items-center gap-2 text-sm">
-            <MapPin className="size-4" />
+            <MapPin className="size-4 shrink-0" aria-hidden />
             Serving {locationLabel}
           </div>
         </div>
 
-        {footerSections.map((section) => (
-          <div key={section.title}>
-            <h3 className="text-sm font-semibold tracking-tight">
-              {section.title}
-            </h3>
-            <div className="mt-3 flex flex-col gap-2 text-sm">
-              {section.links.map((link) => (
-                <Link
-                  key={link.label}
-                  to={link.to}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+        <div className="lg:col-span-4">
+          <h3 className="text-foreground text-sm font-semibold tracking-tight">Shop</h3>
+          <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+            Jump into the catalog or find a store near you.
+          </p>
+          <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
+            <Link
+              to={ROUTES.browse}
+              className={cn(
+                buttonVariants({ size: 'default' }),
+                'h-11 flex-1 gap-2 rounded-xl px-4 text-sm font-semibold shadow-sm sm:min-w-[9.5rem]',
+              )}>
+              <LayoutGrid className="size-4" aria-hidden />
+              Browse products
+              <ArrowRight className="ms-auto size-4 opacity-80 sm:ms-0" aria-hidden />
+            </Link>
+            <Link
+              to={ROUTES.stores}
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'default' }),
+                'border-primary/35 text-foreground h-11 flex-1 gap-2 rounded-xl px-4 text-sm font-semibold shadow-sm sm:min-w-[9.5rem]',
+              )}>
+              <Store className="text-primary size-4" aria-hidden />
+              All shops
+              <ArrowRight className="text-primary ms-auto size-4 opacity-80 sm:ms-0" aria-hidden />
+            </Link>
+            <Link
+              to={ROUTES.search}
+              className={cn(
+                buttonVariants({ variant: 'secondary', size: 'default' }),
+                'h-11 w-full gap-2 rounded-xl px-4 text-sm font-semibold shadow-sm sm:w-auto sm:min-w-[9.5rem]',
+              )}>
+              <Search className="size-4" aria-hidden />
+              Search
+            </Link>
           </div>
-        ))}
+          <Link
+            to={ROUTES.help}
+            className="text-primary mt-4 inline-flex items-center gap-1 text-xs font-semibold hover:underline">
+            Help &amp; support
+            <ArrowRight className="size-3" aria-hidden />
+          </Link>
+        </div>
 
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold tracking-tight">Get the app</h3>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Save your address, reorder faster, and keep checkout totals visible
-              on every device.
-            </p>
+        <div className="space-y-4 lg:col-span-3">
+          <h3 className="text-foreground text-sm font-semibold tracking-tight">Get the app</h3>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Reorder faster with saved addresses and live order tracking.
+          </p>
+          <div className="flex flex-col gap-2.5">
+            <a
+              href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'bg-foreground text-background hover:bg-foreground/90',
+                'inline-flex items-center justify-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold shadow-md transition-colors',
+              )}>
+              <Download className="size-6 shrink-0 opacity-95" aria-hidden />
+              <span className="flex flex-col items-start leading-tight">
+                <span className="text-[10px] font-medium uppercase tracking-wide opacity-80">Get it on</span>
+                <span className="text-[0.95rem] font-bold">Google Play</span>
+              </span>
+            </a>
+            {hasAppStore ? (
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  buttonVariants({ variant: 'outline', size: 'default' }),
+                  'h-11 justify-center gap-2 rounded-xl border-2 font-semibold',
+                )}>
+                <Apple className="size-5" aria-hidden />
+                App Store
+              </a>
+            ) : (
+              <div
+                className={cn(
+                  buttonVariants({ variant: 'outline', size: 'default' }),
+                  'pointer-events-none h-11 justify-center gap-2 rounded-xl border-2 opacity-60',
+                )}>
+                <Apple className="size-5" aria-hidden />
+                App Store — soon
+              </div>
+            )}
           </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="bg-background inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium">
-              <Apple className="size-4" />
-              App Store
-            </div>
-            <div className="bg-background inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium">
-              <Smartphone className="size-4" />
-              Play Store
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             {socialIcons.map((Icon, index) => (
               <span
                 key={index}
-                className="bg-background text-muted-foreground inline-flex size-10 items-center justify-center rounded-full border"
-              >
-                <Icon className="size-4" />
+                className="bg-background text-muted-foreground inline-flex size-10 items-center justify-center rounded-full border shadow-sm">
+                <Icon className="size-4" aria-hidden />
               </span>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="border-border/60 text-muted-foreground mt-8 flex flex-col gap-2 border-t pt-4 text-xs sm:flex-row sm:items-center sm:justify-between">
-        <p>Prices may vary by vendor, availability, and delivery area.</p>
-        <p>Taxes and additional charges are shown during checkout confirmation.</p>
+      <div className="border-border/60 text-muted-foreground mt-10 flex flex-col gap-2 border-t pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+        <p>Prices may vary by shop, availability, and delivery area.</p>
+        <p>Taxes and additional charges are shown at checkout.</p>
       </div>
     </footer>
   )

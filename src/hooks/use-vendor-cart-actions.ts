@@ -18,6 +18,7 @@ import {
 } from '@/lib/guest-cart-storage'
 import { useAuthStore, selectIsAuthenticated } from '@/stores/auth-store'
 import { getApiErrorMessage } from '@/utils/api-error'
+import { useCartAddFeedbackStore } from '@/stores/cart-add-feedback-store'
 
 type PendingSwitch = {
   vendorProductId: string
@@ -90,6 +91,12 @@ export function useVendorCartActions() {
           }
           upsertGuestLine(menuVendorId, vendorProductId, quantity)
           invalidateGuestCart()
+          useCartAddFeedbackStore.getState().push({
+            vendorProductId,
+            productName: vp.product.name,
+            quantity: nextQty,
+            shopName: vp.vendor.name,
+          })
         } catch (e) {
           toast.error(getApiErrorMessage(e, 'Could not add to cart'))
         }
@@ -105,6 +112,15 @@ export function useVendorCartActions() {
     add.mutate(
       { vendorProductId, quantity },
       {
+        onSuccess: (data) => {
+          const line = data.items.find((i) => i.vendorProductId === vendorProductId)
+          useCartAddFeedbackStore.getState().push({
+            vendorProductId,
+            productName: line?.name ?? 'Item',
+            quantity: line?.quantity ?? quantity,
+            shopName: data.vendorName,
+          })
+        },
         onError: (e) =>
           toast.error(getApiErrorMessage(e, 'Could not add to cart')),
       },
@@ -145,6 +161,12 @@ export function useVendorCartActions() {
           pending.current = null
           setSwitchOpenState(false)
           invalidateGuestCart()
+          useCartAddFeedbackStore.getState().push({
+            vendorProductId: p.vendorProductId,
+            productName: vp.product.name,
+            quantity: qty,
+            shopName: vp.vendor.name,
+          })
           toast.success('Cart updated for this shop')
         } catch (e) {
           toast.error(getApiErrorMessage(e, 'Could not update cart'))
@@ -156,9 +178,16 @@ export function useVendorCartActions() {
     add.mutate(
       { vendorProductId: p.vendorProductId, quantity: p.quantity },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           pending.current = null
           setSwitchOpenState(false)
+          const line = data.items.find((i) => i.vendorProductId === p.vendorProductId)
+          useCartAddFeedbackStore.getState().push({
+            vendorProductId: p.vendorProductId,
+            productName: line?.name ?? 'Item',
+            quantity: line?.quantity ?? p.quantity,
+            shopName: data.vendorName,
+          })
           toast.success('Cart updated for this shop')
         },
         onError: (e) =>

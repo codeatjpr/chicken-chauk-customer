@@ -4,7 +4,12 @@ export type DeliveryOrderAddressDto = {
   latitude: number
   longitude: number
   addressLine1: string
+  addressLine2: string | null
   city: string
+  state: string
+  pincode: string
+  mapFormattedAddress: string | null
+  plusCode: string | null
 }
 
 export type DeliveryDetailDto = {

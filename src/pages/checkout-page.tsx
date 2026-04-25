@@ -1,66 +1,59 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  CheckCircle2,
-  CreditCard,
-  Loader2Icon,
-  MapPin,
-  Plus,
-  ShoppingBag,
-  Tag,
-} from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { ChevronLeft, Loader2Icon, MapPin, Plus, ShoppingBag, Tag } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AddAddressDialog } from '@/components/organisms/add-address-dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { orderTrackingPath, ROUTES, vendorPath } from '@/constants/routes'
+import { ROUTES, vendorPath } from '@/constants/routes'
 import { useCartQuery } from '@/hooks/use-cart'
 import * as addressesApi from '@/services/addresses.service'
 import { validateCartForCheckout } from '@/services/cart.service'
-import * as ordersApi from '@/services/orders.service'
 import * as walletApi from '@/services/wallet.service'
+import type { CheckoutRestoreState } from '@/pages/checkout-payment-page'
 import { cn } from '@/lib/utils'
-import type { PaymentMethodDto } from '@/types/order'
 import type { CouponValidationResultDto } from '@/types/wallet'
 import { formatInr } from '@/utils/format'
 import { getApiErrorMessage } from '@/utils/api-error'
 
-const PAYMENT_OPTIONS: { value: PaymentMethodDto; label: string; hint?: string }[] = [
-  { value: 'COD', label: 'Cash on delivery' },
-  { value: 'UPI', label: 'UPI', hint: 'Pay after vendor confirms' },
-  { value: 'CARD', label: 'Card' },
-  { value: 'NETBANKING', label: 'Net banking' },
-]
+type UserAddress = Awaited<ReturnType<typeof addressesApi.fetchAddresses>>[number]
+
+function formatAddressLines(a: UserAddress): string {
+  const line2 = a.addressLine2 ? `, ${a.addressLine2}` : ''
+  return `${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.pincode}`
+}
 
 export function CheckoutPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const restore = (location.state as CheckoutRestoreState | null) ?? null
   const qc = useQueryClient()
   const { data: cart, isLoading: cartLoading } = useCartQuery()
   const [addressOpen, setAddressOpen] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodDto>('COD')
-  const [pickedAddressId, setPickedAddressId] = useState<string | null>(null)
-  const [couponCode, setCouponCode] = useState('')
+  const [pickedAddressId, setPickedAddressId] = useState<string | null>(() => restore?.restoreAddressId ?? null)
+  const [couponCode, setCouponCode] = useState(() => restore?.restoreCoupon ?? '')
   const [couponPreview, setCouponPreview] = useState<CouponValidationResultDto | null>(null)
-  const [walletToUse, setWalletToUse] = useState('')
-  const [instructions, setInstructions] = useState('')
+  const [walletToUse, setWalletToUse] = useState(() => restore?.restoreWalletInput ?? '')
+  const [instructions, setInstructions] = useState(() => restore?.restoreInstructions ?? '')
+  const [continueToPayBusy, setContinueToPayBusy] = useState(false)
 
-  const [reviewOrderOpen, setReviewOrderOpen] = useState(false)
-  const [paymentGateOpen, setPaymentGateOpen] = useState(false)
+  useEffect(() => {
+    if (restore?.restoreAddressId) setPickedAddressId(restore.restoreAddressId)
+    if (restore?.restoreCoupon != null) setCouponCode(restore.restoreCoupon)
+    if (restore?.restoreWalletInput != null) setWalletToUse(restore.restoreWalletInput)
+    if (restore?.restoreInstructions != null) setInstructions(restore.restoreInstructions)
+  }, [restore?.restoreAddressId, restore?.restoreCoupon, restore?.restoreWalletInput, restore?.restoreInstructions])
 
   const addressesQuery = useQuery({
     queryKey: queryKeys.addresses.list,
@@ -137,41 +130,23 @@ export function CheckoutPage() {
       ...queryKeys.cart.summary,
       'checkout-preview',
       selectedAddressId ?? 'none',
-      paymentMethod,
       appliedCouponCode ?? '',
       walletAmountToUse,
     ],
     queryFn: () =>
       validateCartForCheckout({
         deliveryAddressId: selectedAddressId!,
-        paymentMethod,
         couponCode: appliedCouponCode,
         walletAmountToUse,
       }),
     enabled: Boolean(cart && selectedAddressId),
+    retry: 2,
   })
 
-  const placeOrder = useMutation({
-    mutationFn: () => {
-      if (!selectedAddressId) throw new Error('Choose a delivery address')
-      const code = couponCode.trim()
-      return ordersApi.validateAndPlaceOrder({
-        deliveryAddressId: selectedAddressId,
-        paymentMethod,
-        couponCode: code.length ? code : undefined,
-        walletAmountToUse,
-        specialInstructions: instructions.trim() || undefined,
-      })
-    },
-    onSuccess: ({ order }) => {
-      void qc.invalidateQueries({ queryKey: queryKeys.cart.summary })
-      void qc.invalidateQueries({ queryKey: queryKeys.orders.prefix })
-      void qc.invalidateQueries({ queryKey: queryKeys.wallet.summary })
-      toast.success('Order placed')
-      navigate(orderTrackingPath(order.id), { replace: true })
-    },
-    onError: (e) => toast.error(getApiErrorMessage(e, 'Could not place order')),
-  })
+  const selectedAddress = useMemo((): UserAddress | undefined => {
+    if (!selectedAddressId) return undefined
+    return addresses.find((a) => a.id === selectedAddressId)
+  }, [addresses, selectedAddressId])
 
   const summary = useMemo(() => {
     if (!cart) return null
@@ -180,7 +155,6 @@ export function CheckoutPage() {
       itemsTotal: preview?.itemsTotal ?? cart.itemsTotal,
       deliveryFee: preview?.deliveryFee ?? cart.deliveryFee,
       platformFee: preview?.platformFee ?? cart.platformFee,
-      taxAmount: preview?.taxAmount ?? 0,
       discount: preview?.discount ?? 0,
       walletAmountUsed: preview?.walletAmountToUse ?? 0,
       estimatedTotal: cart.estimatedTotal,
@@ -189,16 +163,48 @@ export function CheckoutPage() {
     }
   }, [cart, validationPreviewQuery.data])
 
+  const goToPayment = async () => {
+    if (!selectedAddressId || addresses.length === 0) {
+      toast.error('Choose a delivery address')
+      return
+    }
+    setContinueToPayBusy(true)
+    try {
+      // Always re-run validation on click so we don’t block on a slow/failed first fetch.
+      const result = await validationPreviewQuery.refetch()
+      if (result.isError || !result.data) {
+        toast.error(
+          getApiErrorMessage(
+            result.error,
+            'Could not load totals. Check your address and connection, then try again.',
+          ),
+        )
+        return
+      }
+      navigate(ROUTES.checkoutPayment, {
+        replace: false,
+        state: {
+          deliveryAddressId: selectedAddressId,
+          couponCode: appliedCouponCode,
+          walletAmountToUse,
+          specialInstructions: instructions.trim() || undefined,
+        },
+      })
+    } finally {
+      setContinueToPayBusy(false)
+    }
+  }
+
   if (cartLoading) {
     return (
       <div className="space-y-4 pb-8">
         <Skeleton className="h-8 w-48" />
-        <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-8">
-          <div className="space-y-4">
+        <div className="lg:grid lg:grid-cols-[1fr_min(420px,40vw)] lg:min-h-[calc(100vh-5rem)] lg:gap-0">
+          <div className="space-y-4 p-1 lg:pr-6">
             <Skeleton className="h-48 rounded-2xl" />
             <Skeleton className="h-32 rounded-2xl" />
           </div>
-          <Skeleton className="hidden h-80 rounded-2xl lg:block" />
+          <Skeleton className="hidden min-h-80 rounded-2xl lg:block" />
         </div>
       </div>
     )
@@ -209,31 +215,37 @@ export function CheckoutPage() {
   }
 
   return (
-    <div className="pb-10 lg:pb-12">
-      {/* Page header */}
-      <div className="mb-6 flex items-center gap-3">
-        <ShoppingBag className="text-primary size-6 shrink-0" aria-hidden />
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Checkout</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            From{' '}
-            <Link
-              to={vendorPath(cart.vendorId)}
-              className="text-foreground font-medium hover:underline"
-            >
-              {cart.vendorName}
-            </Link>
-          </p>
+    <div className="pb-10 lg:pb-0">
+      <div className="mb-6">
+        <Link
+          to={ROUTES.cart}
+          className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-sm"
+        >
+          <ChevronLeft className="size-4" />
+          Back to cart
+        </Link>
+        <div className="flex items-center gap-3">
+          <ShoppingBag className="text-primary size-6 shrink-0" aria-hidden />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Checkout</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              From{' '}
+              <Link
+                to={vendorPath(cart.vendorId)}
+                className="text-foreground font-medium hover:underline"
+              >
+                {cart.vendorName}
+              </Link>
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Payment is on the next step. Prices are inclusive of all taxes.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Desktop two-column | Mobile single column */}
-      <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-8 lg:items-start">
-
-        {/* ── LEFT: Address + Payment + Coupon + Instructions ── */}
-        <div className="space-y-5">
-
-          {/* Delivery address */}
+      <div className="lg:grid lg:grid-cols-[1fr_min(420px,40vw)] lg:min-h-[calc(100vh-7rem)] lg:gap-0">
+        <div className="space-y-5 lg:max-h-[calc(100vh-7rem)] lg:min-h-0 lg:overflow-y-auto lg:pr-6 lg:pb-8">
           <div className="border-border/70 bg-card rounded-2xl border p-5">
             <div className="mb-4 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -254,8 +266,7 @@ export function CheckoutPage() {
 
             {addressesQuery.isLoading ? (
               <div className="space-y-2">
-                <Skeleton className="h-16 rounded-xl" />
-                <Skeleton className="h-16 rounded-xl" />
+                <Skeleton className="h-12 rounded-xl" />
               </div>
             ) : addresses.length === 0 ? (
               <div className="border-border/60 rounded-xl border border-dashed px-4 py-8 text-center">
@@ -266,84 +277,76 @@ export function CheckoutPage() {
                 </Button>
               </div>
             ) : (
-              <ul className="space-y-2">
-                {addresses.map((a) => (
-                  <li key={a.id}>
-                    <button
-                      type="button"
-                      onClick={() => setPickedAddressId(a.id)}
-                      className={cn(
-                        'w-full rounded-xl border p-3.5 text-start text-sm transition-colors',
-                        selectedAddressId === a.id
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
-                          : 'border-border/70 hover:bg-muted/40',
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium">
-                          {a.label}
-                          {a.isDefault && (
-                            <span className="text-muted-foreground ms-2 text-xs font-normal">
-                              Default
-                            </span>
-                          )}
-                        </p>
-                        {selectedAddressId === a.id && (
-                          <CheckCircle2 className="text-primary mt-0.5 size-4 shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-muted-foreground mt-1">
-                        {a.addressLine1}
-                        {a.addressLine2 ? `, ${a.addressLine2}` : ''}
-                      </p>
-                      <p className="text-muted-foreground mt-0.5 text-xs">
-                        {a.city}, {a.state} {a.pincode}
-                      </p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Payment method */}
-          <div className="border-border/70 bg-card rounded-2xl border p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <CreditCard className="text-primary size-4 shrink-0" />
-              <h2 className="font-semibold">Payment method</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {PAYMENT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setPaymentMethod(opt.value)}
-                  className={cn(
-                    'rounded-xl border px-4 py-2 text-sm font-medium transition-colors',
-                    paymentMethod === opt.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border/70 bg-transparent hover:bg-muted/50',
-                  )}
+              <div className="space-y-2">
+                <Select
+                  value={selectedAddressId ?? undefined}
+                  onValueChange={(v) => setPickedAddressId(v)}
                 >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.hint && (
-              <p className="text-muted-foreground mt-2.5 text-xs">
-                {PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.hint}
-              </p>
+                  <SelectTrigger
+                    aria-label="Select delivery address"
+                    className="border-primary/40 focus-visible:ring-primary/30 h-auto min-h-11 items-start py-2.5 text-left shadow-none"
+                  >
+                    <div
+                      data-slot="select-value"
+                      className="min-w-0 flex-1 pr-1 text-left"
+                    >
+                      {selectedAddress ? (
+                        <div className="space-y-0.5">
+                          <p className="text-foreground font-medium leading-tight">
+                            {selectedAddress.label}
+                            {selectedAddress.isDefault && (
+                              <span className="text-muted-foreground font-normal"> (default)</span>
+                            )}
+                          </p>
+                          <p className="text-muted-foreground line-clamp-2 text-xs leading-snug">
+                            {formatAddressLines(selectedAddress)}
+                          </p>
+                          {(selectedAddress.plusCode || selectedAddress.mapFormattedAddress) && (
+                            <p className="text-muted-foreground line-clamp-1 text-[0.7rem] leading-snug">
+                              {selectedAddress.plusCode && (
+                                <span className="text-foreground font-mono">{selectedAddress.plusCode} · </span>
+                              )}
+                              {selectedAddress.mapFormattedAddress}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Select an address</span>
+                      )}
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent align="start" position="popper" sideOffset={6}>
+                    {addresses.map((a) => (
+                      <SelectItem
+                        key={a.id}
+                        value={a.id}
+                        textValue={`${a.label} ${formatAddressLines(a)}`}
+                        className="py-2.5"
+                      >
+                        <div className="w-full min-w-0 pr-1 text-left">
+                          <p className="text-foreground font-medium leading-tight">
+                            {a.label}
+                            {a.isDefault && (
+                              <span className="text-muted-foreground font-normal"> (default)</span>
+                            )}
+                          </p>
+                          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
+                            {formatAddressLines(a)}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </div>
 
-          {/* Coupon + Wallet */}
           <div className="border-border/70 bg-card rounded-2xl border p-5 space-y-5">
             <div className="flex items-center gap-2">
               <Tag className="text-primary size-4 shrink-0" />
               <h2 className="font-semibold">Savings</h2>
             </div>
-
-            {/* Coupon */}
             <div className="space-y-2">
               <Label htmlFor="coupon">Coupon code</Label>
               <div className="flex gap-2">
@@ -354,7 +357,7 @@ export function CheckoutPage() {
                     setCouponCode(e.target.value)
                     setCouponPreview(null)
                   }}
-                  placeholder="Try a promo code"
+                  placeholder="Enter promo code (e.g. SAVE20)"
                   autoCapitalize="characters"
                   className="flex-1"
                 />
@@ -381,8 +384,6 @@ export function CheckoutPage() {
                 </p>
               )}
             </div>
-
-            {/* Wallet */}
             <div className="space-y-2">
               <Label htmlFor="wallet-use">Use wallet balance</Label>
               <Input
@@ -390,7 +391,7 @@ export function CheckoutPage() {
                 inputMode="decimal"
                 value={walletToUse}
                 onChange={(e) => setWalletToUse(e.target.value)}
-                placeholder="0"
+                placeholder="₹ amount to apply (e.g. 50)"
               />
               <p className="text-muted-foreground text-xs">
                 Available {formatInr(walletQuery.data?.balance ?? 0)} · up to{' '}
@@ -404,9 +405,8 @@ export function CheckoutPage() {
             </div>
           </div>
 
-          {/* Instructions */}
           <div className="border-border/70 bg-card rounded-2xl border p-5 space-y-3">
-            <h2 className="font-semibold">Instructions for vendor</h2>
+            <h2 className="font-semibold">Instructions for the shop</h2>
             <textarea
               id="notes"
               value={instructions}
@@ -414,14 +414,13 @@ export function CheckoutPage() {
               maxLength={300}
               rows={3}
               className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-xl border px-3 py-2.5 text-sm outline-none focus-visible:ring-2"
-              placeholder="e.g. Ring the doorbell twice, no spicy please…"
+              placeholder="e.g. Leave at gate, ring doorbell twice, less spicy…"
             />
             <p className="text-muted-foreground text-xs text-right">
               {instructions.length}/300
             </p>
           </div>
 
-          {/* Back to cart — mobile only */}
           <div className="lg:hidden">
             <Link
               to={ROUTES.cart}
@@ -432,11 +431,8 @@ export function CheckoutPage() {
           </div>
         </div>
 
-        {/* ── RIGHT: Sticky order summary + Place order ── */}
-        <div className="mt-6 lg:mt-0">
-          <div className="border-border/70 bg-card lg:sticky lg:top-24 rounded-2xl border overflow-hidden">
-
-            {/* Items preview */}
+        <div className="mt-6 lg:mt-0 lg:border-border lg:bg-card/30 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:self-start lg:border-l lg:pl-6">
+          <div className="border-border/70 bg-card overflow-hidden lg:rounded-2xl lg:border lg:shadow-sm">
             <div className="border-border/50 border-b px-5 py-4">
               <h2 className="font-semibold">Order summary</h2>
               <p className="text-muted-foreground mt-0.5 text-xs">
@@ -446,13 +442,14 @@ export function CheckoutPage() {
               </p>
             </div>
 
-            {/* Items list */}
-            <ul className="border-border/50 divide-border/50 divide-y border-b">
+            <ul className="border-border/50 max-h-52 divide-y divide-border/50 overflow-y-auto border-b">
               {cart.items.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{item.name}</p>
-                    <p className="text-muted-foreground text-xs">{item.unit}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {item.unit} (incl. of all taxes)
+                    </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <span className="text-muted-foreground text-xs">×{item.quantity}</span>
@@ -462,15 +459,15 @@ export function CheckoutPage() {
               ))}
             </ul>
 
-            {/* Calculation */}
             {summary && (
               <div className="px-5 py-4 space-y-2.5 text-sm">
+                <p className="text-muted-foreground text-xs">Prices are inclusive of all taxes.</p>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Items total</span>
                   <span className="tabular-nums text-foreground">{formatInr(summary.itemsTotal)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Delivery fee</span>
+                  <span>Delivery</span>
                   <span className="tabular-nums text-foreground">
                     {summary.deliveryFee === 0 ? (
                       <span className="text-emerald-600 font-medium">FREE</span>
@@ -481,14 +478,13 @@ export function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Platform fee</span>
-                  <span className="tabular-nums text-foreground">{formatInr(summary.platformFee)}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Taxes &amp; GST</span>
-                  <span className="tabular-nums text-foreground">
-                    {summary.hasValidatedTotals || summary.taxAmount > 0
-                      ? formatInr(summary.taxAmount)
-                      : '—'}
+                  <span
+                    className={cn(
+                      'tabular-nums text-foreground',
+                      summary.platformFee === 0 && 'text-emerald-600 font-medium',
+                    )}
+                  >
+                    {summary.platformFee === 0 ? 'FREE' : formatInr(summary.platformFee)}
                   </span>
                 </div>
                 {summary.discount > 0 && (
@@ -511,31 +507,47 @@ export function CheckoutPage() {
                 <Separator className="my-1" />
 
                 <div className="flex justify-between font-semibold text-base">
-                  <span>{summary.hasValidatedTotals ? 'Total payable' : 'Estimated total'}</span>
+                  <span>{summary.hasValidatedTotals ? 'Total' : 'Estimated total'}</span>
                   <span className="tabular-nums">
-                    {formatInr(summary.hasValidatedTotals ? summary.totalPayable : summary.estimatedTotal)}
+                    {formatInr(
+                      summary.hasValidatedTotals ? summary.totalPayable : summary.estimatedTotal,
+                    )}
                   </span>
                 </div>
 
-                {!summary.hasValidatedTotals && (
-                  <p className="text-muted-foreground text-xs">
-                    Select an address to see final totals.
+                {validationPreviewQuery.isError && (
+                  <p className="text-destructive text-xs">
+                    {getApiErrorMessage(
+                      validationPreviewQuery.error,
+                      'We could not confirm totals. Click Continue again or refresh the page.',
+                    )}
                   </p>
+                )}
+                {!summary.hasValidatedTotals &&
+                  !validationPreviewQuery.isError &&
+                  selectedAddressId && (
+                    <p className="text-muted-foreground text-xs">
+                      {validationPreviewQuery.isFetching || validationPreviewQuery.isLoading
+                        ? 'Calculating final totals…'
+                        : 'Final totals will appear in a moment.'}
+                    </p>
+                  )}
+                {!selectedAddressId && (
+                  <p className="text-muted-foreground text-xs">Select an address to see final totals.</p>
                 )}
               </div>
             )}
 
-            {/* CTA */}
-            <div className="border-border/50 border-t p-4 space-y-2">
+            <div className="border-border/50 space-y-2 border-t p-4">
               <Button
                 type="button"
-                className="w-full gap-2"
+                className="w-full gap-2 bg-[#f97316] text-base font-semibold text-white hover:bg-[#ea580c] lg:text-lg"
                 size="lg"
-                disabled={placeOrder.isPending || !selectedAddressId || addresses.length === 0}
-                onClick={() => setReviewOrderOpen(true)}
+                disabled={continueToPayBusy || !selectedAddressId || addresses.length === 0}
+                onClick={() => void goToPayment()}
               >
-                {placeOrder.isPending && <Loader2Icon className="size-4 animate-spin" />}
-                Place order
+                {continueToPayBusy && <Loader2Icon className="size-4 animate-spin" />}
+                {continueToPayBusy ? 'Loading totals…' : 'Continue to payment'}
               </Button>
               <Link
                 to={ROUTES.cart}
@@ -551,80 +563,6 @@ export function CheckoutPage() {
         </div>
       </div>
 
-      <AlertDialog open={reviewOrderOpen} onOpenChange={setReviewOrderOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm your order?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="block">
-                You are ordering from <strong>{cart.vendorName}</strong>
-                {summary ? (
-                  <>
-                    {' '}
-                    · total{' '}
-                    <strong>
-                      {formatInr(summary.hasValidatedTotals ? summary.totalPayable : summary.estimatedTotal)}
-                    </strong>
-                  </>
-                ) : null}
-                .
-              </span>
-              <span className="text-muted-foreground mt-2 block text-xs">
-                Payment: <strong>{PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.label}</strong>
-                {paymentMethod === 'COD'
-                  ? ' — pay when the order arrives.'
-                  : ' — the order is only submitted after you confirm payment on the next step.'}
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Go back</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={placeOrder.isPending}
-              onClick={() => {
-                setReviewOrderOpen(false)
-                if (paymentMethod === 'COD') {
-                  placeOrder.mutate()
-                } else {
-                  setPaymentGateOpen(true)
-                }
-              }}
-            >
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={paymentGateOpen} onOpenChange={setPaymentGateOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Complete payment first</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="block">
-                For <strong>{PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.label}</strong>, complete payment for{' '}
-                <strong>{summary ? formatInr(summary.totalPayable) : '—'}</strong>, then tap below to place the order.
-              </span>
-              <span className="text-muted-foreground mt-2 block text-xs">
-                Until you confirm, the order is not placed and stock is not reserved.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={placeOrder.isPending}
-              onClick={() => {
-                setPaymentGateOpen(false)
-                placeOrder.mutate()
-              }}
-            >
-              I have paid — place order
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <AddAddressDialog
         open={addressOpen}
         onOpenChange={setAddressOpen}
@@ -638,6 +576,8 @@ export function CheckoutPage() {
             pincode: values.pincode,
             latitude: values.latitude,
             longitude: values.longitude,
+            mapFormattedAddress: values.mapFormattedAddress?.trim() || undefined,
+            plusCode: values.plusCode?.trim() || undefined,
             isDefault: addresses.length === 0,
           })
         }}

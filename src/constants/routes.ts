@@ -1,10 +1,13 @@
 export const ROUTES = {
   root: '/',
   login: '/login',
+  register: '/register',
   onboarding: '/onboarding',
   home: '/home',
   browse: '/browse',
   search: '/search',
+  /** All nearby shops / vendors (grid + shop icons). */
+  stores: '/stores',
   orders: '/orders',
   profile: '/profile',
   profileAddresses: '/profile/addresses',
@@ -14,6 +17,8 @@ export const ROUTES = {
   help: '/help',
   cart: '/cart',
   checkout: '/checkout',
+  /** Pay online after address / coupon (post–checkout v2) */
+  checkoutPayment: '/checkout/payment',
 } as const
 
 export function vendorPath(id: string) {

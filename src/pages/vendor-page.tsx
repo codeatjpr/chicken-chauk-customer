@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
-import { Search, ShoppingBag, Sparkles, Star, Timer } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { Grid2x2, Pencil, Search, ShoppingBag, Sparkles, Star, Timer } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +15,7 @@ import {
 import { CartLineControls } from '@/components/molecules/cart-line-controls'
 import { CartPanel } from '@/components/organisms/cart-panel'
 import { CategoryPill } from '@/components/molecules/category-pill'
-import { CommerceProductCard } from '@/components/molecules/commerce-product-card'
+import { ProductCard } from '@/components/molecules/product-card'
 import { EmptyState } from '@/components/molecules/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,10 +28,12 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { vendorProductPath } from '@/constants/routes'
+import { ROUTES, vendorProductPath } from '@/constants/routes'
 import { useDebounceValue } from '@/hooks/use-debounce-value'
+import { useInfiniteScrollSentinel } from '@/hooks/use-infinite-scroll-sentinel'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
-import { fetchVendorProducts } from '@/services/catalog.service'
+import { pickMerchLabel } from '@/lib/merch-label'
+import * as catalogApi from '@/services/catalog.service'
 import * as ratingsApi from '@/services/ratings.service'
 import { fetchVendorById } from '@/services/vendors.service'
 import type { VendorProductDto } from '@/types/catalog'
@@ -53,6 +55,7 @@ function groupByCategory(items: VendorProductDto[]) {
 
 export function VendorPage() {
   const { id: vendorId = '' } = useParams<{ id: string }>()
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [activeCat, setActiveCat] = useState<string>('all')
   const [menuFilter, setMenuFilter] = useState('')
@@ -63,24 +66,44 @@ export function VendorPage() {
     enabled: Boolean(vendorId),
   })
 
+  const categoriesCatalogQuery = useQuery({
+    queryKey: queryKeys.catalog.categories,
+    queryFn: () => catalogApi.fetchCategories(),
+    staleTime: 300_000,
+  })
+
+  const categoryImageById = useMemo(() => {
+    const m = new Map<string, string | null | undefined>()
+    for (const c of categoriesCatalogQuery.data ?? []) {
+      m.set(c.id, c.imageUrl)
+    }
+    return m
+  }, [categoriesCatalogQuery.data])
+
   const debouncedMenuSearch = useDebounceValue(menuFilter, 350)
   const categoryFilter = activeCat === 'all' ? undefined : activeCat
   const searchParam = debouncedMenuSearch.trim().length > 0 ? debouncedMenuSearch.trim() : undefined
 
   const menuBaselineQuery = useQuery({
     queryKey: queryKeys.catalog.vendorProducts(vendorId, undefined, undefined),
-    queryFn: () => fetchVendorProducts(vendorId, { limit: 200 }),
+    queryFn: () => catalogApi.fetchVendorProducts(vendorId, { limit: 200 }),
     enabled: Boolean(vendorId),
   })
 
-  const menuDisplayQuery = useQuery({
-    queryKey: queryKeys.catalog.vendorProducts(vendorId, categoryFilter, searchParam),
-    queryFn: () =>
-      fetchVendorProducts(vendorId, {
+  const menuDisplayInfiniteQuery = useInfiniteQuery({
+    queryKey: [
+      ...queryKeys.catalog.vendorProducts(vendorId, categoryFilter, searchParam),
+      'infinite',
+    ],
+    queryFn: ({ pageParam }) =>
+      catalogApi.fetchVendorProducts(vendorId, {
         categoryId: categoryFilter,
         search: searchParam,
-        limit: 100,
+        page: pageParam,
+        limit: 24,
       }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.hasNext ? last.page + 1 : undefined),
     enabled: Boolean(vendorId),
   })
 
@@ -108,23 +131,46 @@ export function VendorPage() {
     return groupByCategory(items).map(({ id, name }) => ({ id, name }))
   }, [menuBaselineQuery.data])
 
-  const displayItems = menuDisplayQuery.data?.items ?? []
+  const displayItems = useMemo(
+    () => menuDisplayInfiniteQuery.data?.pages.flatMap((p) => p.items) ?? [],
+    [menuDisplayInfiniteQuery.data],
+  )
+  const menuTotal =
+    menuDisplayInfiniteQuery.data?.pages[0]?.total ?? displayItems.length
+
+  const scrollWatchKey = `${activeCat}-${debouncedMenuSearch}-${menuDisplayInfiniteQuery.dataUpdatedAt}-${displayItems.length}`
+
+  useInfiniteScrollSentinel(loadMoreRef, {
+    enabled: displayItems.length > 0 && !menuDisplayInfiniteQuery.isLoading,
+    hasNextPage: menuDisplayInfiniteQuery.hasNextPage,
+    isFetchingNextPage: menuDisplayInfiniteQuery.isFetchingNextPage,
+    fetchNextPage: menuDisplayInfiniteQuery.fetchNextPage,
+    watchKey: scrollWatchKey,
+  })
+
   const vendor = vendorQuery.data
   const showSticky = cart && cart.items.length > 0 && cart.vendorId === vendorId
 
   if (!vendorId) {
-    return <p className="text-muted-foreground text-sm">Invalid vendor link.</p>
+    return <p className="text-muted-foreground text-sm">Invalid shop link.</p>
   }
 
   return (
     <div className={cn('pb-6', showSticky && 'pb-28 lg:pb-6')}>
       {vendorQuery.isLoading ? (
-        <Skeleton className="mb-6 h-64 rounded-3xl" />
+        <Skeleton className="mb-6 aspect-6/1 w-full rounded-3xl" />
       ) : vendorQuery.isError || !vendor ? (
-        <p className="text-destructive text-sm">Could not load this vendor.</p>
+        <div className="space-y-1 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+          <p className="text-destructive text-sm font-medium">Could not load this shop.</p>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Usually this means the shop ID in the URL is wrong, the listing was removed, or the API
+            could not be reached (network or server). Open the shop again from Home or Search, or
+            refresh the page.
+          </p>
+        </div>
       ) : (
         <header className="mb-6 overflow-hidden rounded-3xl border shadow-sm">
-          <div className="bg-muted relative aspect-16/7 w-full">
+          <div className="bg-muted relative aspect-6/1 w-full">
             {vendor.bannerUrl ? (
               <img src={vendor.bannerUrl} alt="" className="size-full object-cover" />
             ) : (
@@ -144,7 +190,7 @@ export function VendorPage() {
               <div className="max-w-2xl">
                 <p className="text-primary mb-2 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.22em] uppercase">
                   <Sparkles className="size-3.5" />
-                  Vendor storefront
+                  Shop
                 </p>
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   {vendor.name}
@@ -199,14 +245,21 @@ export function VendorPage() {
 
       <div className="lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-8">
         <div className="min-w-0">
-          {menuBaselineQuery.isLoading || menuDisplayQuery.isLoading ? (
-            <div className="grid gap-4 xl:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-44 rounded-3xl" />
+          {menuBaselineQuery.isLoading ||
+          (menuDisplayInfiniteQuery.isLoading && !menuDisplayInfiniteQuery.data) ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Skeleton key={index} className="aspect-3/4 rounded-xl" />
               ))}
             </div>
-          ) : menuDisplayQuery.isError ? (
-            <p className="text-destructive text-sm">Menu could not be loaded.</p>
+          ) : menuDisplayInfiniteQuery.isError ? (
+            <div className="space-y-1 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+              <p className="text-destructive text-sm font-medium">Menu could not be loaded.</p>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                The shop loaded but product data failed. Check your connection and try again, or pick
+                another category after refreshing.
+              </p>
+            </div>
           ) : (
             <>
               <div className="mb-4 space-y-3">
@@ -214,11 +267,11 @@ export function VendorPage() {
                   <div>
                     <h2 className="text-xl font-semibold tracking-tight">Browse this menu</h2>
                     <p className="text-muted-foreground text-sm">
-                      Filter by category or search to narrow down this vendor&apos;s live products.
+                      Filter by category or search to narrow down this shop&apos;s live products.
                     </p>
                   </div>
                   <div className="text-muted-foreground hidden text-sm sm:block">
-                    {displayItems.length} item{displayItems.length !== 1 ? 's' : ''}
+                    {menuTotal} item{menuTotal !== 1 ? 's' : ''}
                   </div>
                 </div>
 
@@ -226,7 +279,7 @@ export function VendorPage() {
                   <Search className="text-muted-foreground pointer-events-none absolute inset-s-3 top-1/2 size-4 -translate-y-1/2" />
                   <Input
                     className="bg-card ps-9"
-                    placeholder="Filter dishes in this menu…"
+                    placeholder="Search dishes or keywords in this menu…"
                     value={menuFilter}
                     onChange={(e) => setMenuFilter(e.target.value)}
                     aria-label="Filter menu"
@@ -238,11 +291,17 @@ export function VendorPage() {
                     label="All"
                     active={activeCat === 'all'}
                     onClick={() => setActiveCat('all')}
+                    leadingIcon={<Grid2x2 className="size-4" aria-hidden />}
                   />
                   {categories.map((category) => (
                     <CategoryPill
                       key={category.id}
                       label={category.name}
+                      imageUrl={
+                        category.id !== '_uncat'
+                          ? categoryImageById.get(category.id) ?? undefined
+                          : undefined
+                      }
                       active={activeCat === category.id}
                       onClick={() => setActiveCat(category.id)}
                     />
@@ -258,41 +317,65 @@ export function VendorPage() {
                   className="bg-card/40"
                 />
               ) : (
-                <div className="grid gap-4 xl:grid-cols-2">
-                  {displayItems.map((row) => (
-                    <CommerceProductCard
-                      key={row.id}
-                      name={row.product.name}
-                      href={vendorProductPath(row.id)}
-                      imageUrl={row.imageUrl ?? row.product.imageUrl}
-                      description={row.product.description}
-                      categoryName={row.product.category?.name}
-                      unit={row.quantityUnit ?? ''}
-                      price={row.price}
-                      mrp={row.mrp}
-                      availabilityLabel={row.isAvailable && vendor?.isOpen ? 'Available' : 'Closed'}
-                      meta={
-                        <p className="text-muted-foreground text-xs">
-                          {vendor?.name}
-                          {row.stock > 0 ? ` · ${row.stock} left in stock` : ' · Restocking soon'}
-                        </p>
-                      }
-                      action={
-                        <CartLineControls
-                          cart={cart}
-                          vendorProductId={row.id}
-                          maxQty={Math.max(0, row.stock)}
-                          isAvailable={row.isAvailable && vendor?.isOpen === true}
-                          isAdding={addIsPending}
-                          isUpdating={updateIsPending}
-                          onAdd={(qty) => addWithSwitch(vendorId, row.id, qty)}
-                          onUpdateQty={updateQty}
-                          onRemove={removeLine}
+                <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {displayItems.map((row, i) => {
+                      const weightLabel =
+                        row.quantityValue != null
+                          ? `${row.quantityValue}${row.quantityUnit ?? ''}`.trim()
+                          : null
+                      return (
+                        <ProductCard
+                          key={row.id}
+                          variant="minimal"
+                          plpStyle
+                          to={vendorProductPath(row.id)}
+                          favoriteProductId={row.product.id}
+                          name={row.product.name}
+                          imageUrl={row.imageUrl ?? row.product.imageUrl}
+                          description={row.description ?? row.product.description}
+                          categoryName={row.product.category?.name ?? null}
+                          subCategoryName={row.product.subCategory?.name ?? null}
+                          vendorName={vendor.name}
+                          merchLabel={pickMerchLabel(row.id, i)}
+                          packInfo={{
+                            weightLabel: weightLabel || null,
+                            pieces: row.pieces ?? null,
+                            servings: row.servings ?? null,
+                          }}
+                          price={row.price}
+                          mrp={row.mrp}
+                          cartAction={
+                            <CartLineControls
+                              cart={cart}
+                              vendorProductId={row.id}
+                              maxQty={Math.max(0, row.stock)}
+                              isAvailable={row.isAvailable && vendor?.isOpen === true}
+                              isAdding={addIsPending}
+                              isUpdating={updateIsPending}
+                              onAdd={(qty) => addWithSwitch(vendorId, row.id, qty)}
+                              onUpdateQty={updateQty}
+                              onRemove={removeLine}
+                            />
+                          }
+                          meta={
+                            <p className="text-muted-foreground text-xs">
+                              {row.stock > 0
+                                ? `${row.stock} left in stock`
+                                : 'Restocking soon'}
+                            </p>
+                          }
                         />
-                      }
-                    />
-                  ))}
-                </div>
+                      )
+                    })}
+                  </div>
+                  <div ref={loadMoreRef} className="h-8" />
+                  {menuDisplayInfiniteQuery.isFetchingNextPage ? (
+                    <p className="text-muted-foreground py-4 text-center text-xs">
+                      Loading more…
+                    </p>
+                  ) : null}
+                </>
               )}
             </>
           )}
@@ -307,20 +390,41 @@ export function VendorPage() {
       </div>
 
       {showSticky ? (
-        <div className="border-border/80 bg-background/95 fixed inset-x-0 bottom-42 z-20 flex items-center justify-between gap-3 border-t px-3 py-3 backdrop-blur-md lg:hidden">
-          <div className="min-w-0">
-            <p className="text-muted-foreground truncate text-xs">{cart.vendorName}</p>
-            <p className="font-semibold tabular-nums">{formatInr(cart.estimatedTotal)}</p>
+        <div
+          className="fixed inset-x-0 z-20 lg:hidden"
+          style={{
+            bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))',
+          }}
+        >
+          <div className="border-border/80 bg-background/98 mx-auto max-w-[1400px] overflow-hidden rounded-t-xl border border-b-0 shadow-[0_-8px_30px_-12px_rgba(0,0,0,0.12)] backdrop-blur-md">
+            <p className="text-muted-foreground bg-muted/80 border-border/60 border-b px-3 py-1.5 text-[10px] leading-snug">
+              Total includes items, delivery &amp; platform fees where applicable. Use Edit to change
+              quantities on the cart page, or Cart for a quick review.
+            </p>
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-muted-foreground truncate text-xs">{cart.vendorName}</p>
+                <p className="font-semibold tabular-nums">{formatInr(cart.estimatedTotal)}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button type="button" variant="outline" size="sm" className="gap-1 px-2.5" asChild>
+                  <Link to={ROUTES.cart}>
+                    <Pencil className="size-3.5" />
+                    Edit
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setSheetOpen(true)}
+                >
+                  <ShoppingBag className="size-4" />
+                  Cart
+                </Button>
+              </div>
+            </div>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            className="shrink-0 gap-1.5"
-            onClick={() => setSheetOpen(true)}
-          >
-            <ShoppingBag className="size-4" />
-            Cart
-          </Button>
         </div>
       ) : null}
 
@@ -340,7 +444,7 @@ export function VendorPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Start a new cart?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your cart has items from another vendor. Adding from this menu will clear the current cart and start fresh here.
+              Your cart has items from another shop. Adding from this menu will clear the current cart and start fresh here.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -22,7 +22,6 @@ export type CartValidationResultDto = {
   cartId: string
   vendorId: string
   deliveryAddressId: string
-  paymentMethod: PaymentMethodDto
   couponCode?: string
   walletAmountToUse: number
   items: Array<{
@@ -107,6 +106,10 @@ export type OrderDetailDto = {
     city: string
     state: string
     pincode: string
+    latitude: number
+    longitude: number
+    mapFormattedAddress: string | null
+    plusCode: string | null
   } | null
   items: OrderItemDto[]
   statusLogs: OrderStatusLogDto[]

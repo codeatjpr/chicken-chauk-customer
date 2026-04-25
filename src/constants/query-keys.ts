@@ -1,3 +1,5 @@
+import { getDiscoveryRadiusKm } from '@/stores/discovery-config-store'
+
 const root = ['chicken-chauk'] as const
 
 export const queryKeys = {
@@ -8,15 +10,36 @@ export const queryKeys = {
   discovery: {
     home: (city: string, lat: number, lng: number) =>
       [...root, 'discovery', 'home', city, lat, lng] as const,
-    products: (city: string, categoryId?: string, search?: string) =>
-      [...root, 'discovery', 'products', city, categoryId ?? 'all', search ?? ''] as const,
-    search: (q: string, city: string) =>
-      [...root, 'discovery', 'search', city, q] as const,
+    products: (
+      city: string,
+      lat: number,
+      lng: number,
+      categoryId?: string,
+      subCategoryId?: string | null,
+      search?: string,
+    ) =>
+      [
+        ...root,
+        'discovery',
+        'products',
+        city,
+        lat,
+        lng,
+        categoryId ?? 'all',
+        subCategoryId ?? 'all',
+        search ?? '',
+      ] as const,
+    search: (q: string, city: string, lat: number, lng: number) =>
+      [...root, 'discovery', 'search', city, lat, lng, q] as const,
     searchPrefix: [...root, 'discovery', 'search'] as const,
   },
   vendors: {
-    nearby: (city: string, lat: number, lng: number) =>
-      [...root, 'vendors', 'nearby', city, lat, lng] as const,
+    nearby: (
+      city: string,
+      lat: number,
+      lng: number,
+      radiusKm: number = getDiscoveryRadiusKm(),
+    ) => [...root, 'vendors', 'nearby', city, lat, lng, radiusKm] as const,
     detail: (id: string) => [...root, 'vendors', 'detail', id] as const,
   },
   catalog: {
@@ -44,6 +67,9 @@ export const queryKeys = {
   cart: {
     summary: [...root, 'cart'] as const,
     guestSummary: [...root, 'cart', 'guest'] as const,
+  },
+  app: {
+    publicConfig: [...root, 'app', 'public-config'] as const,
   },
   addresses: {
     list: [...root, 'addresses'] as const,

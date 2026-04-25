@@ -268,7 +268,7 @@ function FavoritesTabContent({ onGoTo }: { onGoTo: (path: string) => void }) {
     <div className="space-y-4 p-4">
       <h2 className="font-semibold">Saved</h2>
       <p className="text-muted-foreground text-sm">
-        Products and vendors you've saved appear here for quick access.
+        Products and shops you've saved appear here for quick access.
       </p>
       <Button variant="outline" className="w-full" onClick={() => onGoTo(ROUTES.favorites)}>
         View favorites

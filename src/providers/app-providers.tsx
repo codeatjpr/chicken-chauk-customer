@@ -6,6 +6,7 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { BrowserRouter } from 'react-router-dom'
 import { AppErrorFallback } from '@/components/system/app-error-fallback'
 import { DocumentTitleSync } from '@/components/system/document-title-sync'
+import { ScrollToTop } from '@/components/system/scroll-to-top'
 import { SplashScreen } from '@/components/system/splash-screen'
 import { Toaster } from '@/components/ui/sonner'
 import { createQueryClient } from '@/lib/query-client'
@@ -24,12 +25,14 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          forcedTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <BrowserRouter>
             <I18nProvider>
+              <ScrollToTop />
               <DocumentTitleSync />
               <SplashScreen />
               <div

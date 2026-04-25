@@ -8,4 +8,6 @@ export type LocationSelection = {
   area?: string
   /** When available from Google address components (for form prefill). */
   addressLine1?: string
+  /** Open Location Code (Plus Code) for the pin, when available. */
+  plusCode?: string
 }

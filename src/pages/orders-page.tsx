@@ -128,8 +128,8 @@ export function OrdersPage() {
                 title="No orders yet"
                 description="When you place an order, it will show up here."
               >
-                <Link to={ROUTES.home} className={cn(buttonVariants())}>
-                  Browse vendors
+                <Link to={ROUTES.stores} className={cn(buttonVariants())}>
+                  Browse shops near you
                 </Link>
               </EmptyState>
             </div>

@@ -19,7 +19,7 @@ export function CartPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 py-6 lg:grid lg:grid-cols-[1fr_380px] lg:gap-8 lg:space-y-0">
+      <div className="space-y-4 py-6 lg:grid lg:grid-cols-[1fr_min(420px,40vw)] lg:gap-0 lg:space-y-0">
         <div className="space-y-3">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-24 rounded-2xl" />
@@ -40,11 +40,11 @@ export function CartPage() {
         <div>
           <h1 className="text-xl font-semibold">Your cart is empty</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Browse vendors and add items to get started.
+            Browse shops near you and add items to get started.
           </p>
         </div>
-        <Link to={ROUTES.home} className={cn(buttonVariants())}>
-          Browse vendors
+        <Link to={ROUTES.stores} className={cn(buttonVariants())}>
+          Browse shops near you
         </Link>
       </div>
     )
@@ -65,11 +65,11 @@ export function CartPage() {
         </p>
       </div>
 
-      {/* Desktop two-column / Mobile single column */}
-      <div className="lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
+      {/* Desktop: scrollable lines + sticky summary rail (Zepto-style) */}
+      <div className="lg:grid lg:grid-cols-[1fr_min(420px,40vw)] lg:min-h-[calc(100vh-7rem)] lg:items-start lg:gap-0">
 
         {/* ── LEFT: Cart items ── */}
-        <div className="space-y-3">
+        <div className="space-y-3 lg:max-h-[calc(100vh-7rem)] lg:min-h-0 lg:overflow-y-auto lg:pr-6 lg:pb-8">
           {cart.hasChanges && (
             <div className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 rounded-2xl border px-4 py-3 text-sm">
               Prices or availability may have changed since you added these items.
@@ -100,7 +100,7 @@ export function CartPage() {
                   {item.name}
                 </p>
                 <p className="text-muted-foreground mt-0.5 text-sm">
-                  {item.unit} · {formatInr(item.currentPrice)} each
+                  {item.unit} · {formatInr(item.currentPrice)} each (incl. of all taxes)
                 </p>
                 {item.priceChanged && (
                   <p className="text-amber-700 dark:text-amber-300 mt-1 text-xs">
@@ -137,8 +137,8 @@ export function CartPage() {
         </div>
 
         {/* ── RIGHT: Order summary ── */}
-        <div className="mt-6 lg:mt-0">
-          <div className="border-border/70 bg-card sticky top-24 rounded-2xl border p-6">
+        <div className="mt-6 lg:mt-0 lg:border-border lg:bg-card/30 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:self-start lg:border-l lg:pl-6">
+          <div className="border-border/70 bg-card rounded-2xl border p-6 lg:shadow-sm">
             <h2 className="mb-4 text-base font-semibold">Order summary</h2>
 
             <div className="text-muted-foreground space-y-3 text-sm">
@@ -163,8 +163,15 @@ export function CartPage() {
               </div>
               <div className="flex justify-between">
                 <span>Platform fee</span>
-                <span className="tabular-nums text-foreground">
-                  {formatInr(cart.platformFee)}
+                <span
+                  className={cn(
+                    'tabular-nums',
+                    cart.platformFee === 0
+                      ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                      : 'text-foreground',
+                  )}
+                >
+                  {cart.platformFee === 0 ? 'FREE' : formatInr(cart.platformFee)}
                 </span>
               </div>
             </div>
@@ -195,7 +202,7 @@ export function CartPage() {
 
             <p className="text-muted-foreground mt-3 text-center text-xs">
               {authed
-                ? 'Taxes and final delivery fee calculated at checkout.'
+                ? 'Prices are inclusive of all taxes. Fees follow platform settings at checkout.'
                 : 'Sign in to place your order. Your cart is saved on this device until then.'}
             </p>
           </div>

@@ -28,7 +28,7 @@ export function FavoritesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Saved</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
-            Vendors and items you have saved.
+            Shops near you and items you have saved.
           </p>
         </div>
       </div>
@@ -47,7 +47,7 @@ export function FavoritesPage() {
                 : 'border-border/70 bg-card hover:bg-muted/50',
             )}
           >
-            {t === 'vendors' ? 'Vendors' : 'Items'}
+            {t === 'vendors' ? 'Shops' : 'Items'}
             {data && (
               <span className="ml-1.5 text-xs opacity-60">
                 ({t === 'vendors' ? data.vendors.length : data.products.length})
@@ -75,11 +75,11 @@ export function FavoritesPage() {
       ) : !data ? null : (
         <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 
-          {/* ── LEFT: Saved vendors ── */}
+          {/* ── LEFT: Saved shops ── */}
           <div className={cn(mobileTab !== 'vendors' && 'hidden lg:block')}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold lg:text-lg">
-                Vendors
+                Shops near you
                 {data.vendors.length > 0 && (
                   <span className="text-muted-foreground ml-2 text-sm font-normal">
                     ({data.vendors.length})
@@ -92,7 +92,7 @@ export function FavoritesPage() {
               <div className="border-border/60 rounded-2xl border border-dashed px-6 py-12 text-center">
                 <Store className="text-muted-foreground/30 mx-auto mb-3 size-8" />
                 <p className="text-muted-foreground text-sm">
-                  No saved vendors yet. Tap the heart on a vendor to save it.
+                  No saved shops yet. Tap the heart on a shop to save it.
                 </p>
               </div>
             ) : (

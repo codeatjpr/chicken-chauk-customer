@@ -1,10 +1,7 @@
 import { axiosInstance } from '@/lib/axiosInstance'
 import type { ApiSuccess } from '@/types/api'
-import type {
-  DiscoveryProductFeedData,
-  DiscoverySearchData,
-  HomeScreenData,
-} from '@/types/discovery'
+import type { DiscoveryProductFeedData, DiscoverySearchData, HomeScreenData } from '@/types/discovery'
+import { useDiscoveryConfigStore } from '@/stores/discovery-config-store'
 
 export async function fetchHomeScreen(params: {
   city: string
@@ -18,12 +15,18 @@ export async function fetchHomeScreen(params: {
   if (!data.success || !data.data) {
     throw new Error(data.message ?? 'Failed to load home')
   }
-  return data.data
+  const payload = data.data
+  if (typeof payload.discoveryRadiusKm === 'number') {
+    useDiscoveryConfigStore.getState().setRadiusKm(payload.discoveryRadiusKm)
+  }
+  return payload
 }
 
 export async function fetchDiscoverySearch(params: {
   q: string
   city: string
+  latitude: number
+  longitude: number
   page?: number
   limit?: number
 }): Promise<DiscoverySearchData> {
@@ -39,7 +42,10 @@ export async function fetchDiscoverySearch(params: {
 
 export async function fetchDiscoveryProducts(params: {
   city: string
+  latitude: number
+  longitude: number
   categoryId?: string
+  subCategoryId?: string
   search?: string
   page?: number
   limit?: number

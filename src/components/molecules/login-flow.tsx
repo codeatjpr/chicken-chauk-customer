@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Loader2Icon } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2Icon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
@@ -169,8 +169,8 @@ export function LoginFlow({ onSuccess, onCancel, from = ROUTES.home }: LoginFlow
         <form onSubmit={onPhoneSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="lf-phone">Mobile number</Label>
-            <div className="flex gap-2">
-              <span className="border-input bg-muted text-muted-foreground flex h-9 shrink-0 items-center rounded-lg border px-2.5 text-sm">
+            <div className="bg-background border-input focus-within:ring-primary/20 flex h-11 w-full overflow-hidden rounded-xl border bg-clip-padding shadow-sm focus-within:ring-2 [&_input]:bg-transparent">
+              <span className="text-muted-foreground border-input flex shrink-0 items-center border-e px-3 text-sm">
                 +91
               </span>
               <Input
@@ -179,7 +179,8 @@ export function LoginFlow({ onSuccess, onCancel, from = ROUTES.home }: LoginFlow
                 inputMode="numeric"
                 autoComplete="tel-national"
                 maxLength={10}
-                placeholder="9876543210"
+                placeholder="10-digit mobile number"
+                className="border-0 shadow-none focus-visible:ring-0 h-full rounded-none text-base"
                 aria-invalid={Boolean(phoneForm.formState.errors.phone)}
                 {...phoneForm.register('phone')}
               />
@@ -190,14 +191,21 @@ export function LoginFlow({ onSuccess, onCancel, from = ROUTES.home }: LoginFlow
               </p>
             )}
           </div>
-          <Button type="submit" className="w-full gap-2" disabled={sendMutation.isPending}>
+          <Button
+            type="submit"
+            className="h-12 w-full justify-between gap-2 rounded-2xl px-5 text-base font-semibold"
+            disabled={sendMutation.isPending}
+          >
             {sendMutation.isPending ? (
               <>
                 <Loader2Icon className="size-4 animate-spin" />
                 Sending…
               </>
             ) : (
-              'Get OTP'
+              <>
+                <span>Get OTP</span>
+                <ArrowRight className="size-5 shrink-0" aria-hidden />
+              </>
             )}
           </Button>
         </form>

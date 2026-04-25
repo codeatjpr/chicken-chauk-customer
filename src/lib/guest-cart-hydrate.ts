@@ -1,4 +1,5 @@
 import { fetchVendorProductById } from '@/services/catalog.service'
+import { fetchPublicConfig } from '@/services/config.service'
 import type { CartItemDetailDto, CartSummaryDto } from '@/types/cart'
 import {
   clearGuestCart,
@@ -7,10 +8,11 @@ import {
   type GuestCartLine,
 } from '@/lib/guest-cart-storage'
 
-/** Mirrors backend cart.service.ts fee rules for display parity. */
-const DELIVERY_FEE_FREE_ABOVE = 500
-const DELIVERY_FEE_BASE = 30
-const PLATFORM_FEE_PERCENT = 2
+/** Fallbacks if public config cannot be loaded (offline / error). */
+const DEFAULT_DELIVERY_FEE_FREE_ABOVE = 500
+const DEFAULT_DELIVERY_FEE_BASE = 30
+const DEFAULT_PLATFORM_FEE_PERCENT = 2
+const DEFAULT_PLATFORM_FEE_FIXED = 0
 
 function formatListingUnit(
   quantityValue: number | null | undefined,
@@ -31,6 +33,20 @@ function formatListingUnit(
 export async function hydrateGuestCart(): Promise<CartSummaryDto | null> {
   const raw = loadGuestCart()
   if (!raw || raw.items.length === 0) return null
+
+  let deliveryFeeFreeAbove = DEFAULT_DELIVERY_FEE_FREE_ABOVE
+  let deliveryFeeBase = DEFAULT_DELIVERY_FEE_BASE
+  let platformFeePercent = DEFAULT_PLATFORM_FEE_PERCENT
+  let platformFeeFixed = DEFAULT_PLATFORM_FEE_FIXED
+  try {
+    const cfg = await fetchPublicConfig()
+    deliveryFeeFreeAbove = cfg.deliveryFeeFreeAbove
+    deliveryFeeBase = cfg.deliveryFeeBase
+    platformFeePercent = cfg.platformFeePercent
+    platformFeeFixed = cfg.platformFeeFixed ?? DEFAULT_PLATFORM_FEE_FIXED
+  } catch {
+    // keep defaults — same shape as backend cart when config unavailable
+  }
 
   const vps = await Promise.all(
     raw.items.map((l) => fetchVendorProductById(l.vendorProductId).catch(() => null)),
@@ -90,8 +106,11 @@ export async function hydrateGuestCart(): Promise<CartSummaryDto | null> {
   }
 
   const itemsTotal = details.reduce((s, i) => s + i.total, 0)
-  const deliveryFee = itemsTotal >= DELIVERY_FEE_FREE_ABOVE ? 0 : DELIVERY_FEE_BASE
-  const platformFee = Math.round(itemsTotal * (PLATFORM_FEE_PERCENT / 100))
+  const deliveryFee = itemsTotal >= deliveryFeeFreeAbove ? 0 : deliveryFeeBase
+  const platformFee =
+    platformFeeFixed > 0
+      ? Math.round(platformFeeFixed)
+      : Math.round(itemsTotal * (platformFeePercent / 100))
   const hasChanges = details.some((d) => !d.isAvailable)
 
   return {
