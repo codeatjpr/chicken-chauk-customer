@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useMinWidth } from '@/hooks/use-media-query'
@@ -13,18 +13,36 @@ type HeroCarouselProps = {
   className?: string
 }
 
+function HeroSlideImage({ src }: { src: string }) {
+  const [imgBroken, setImgBroken] = useState(false)
+
+  return (
+    <>
+      <img
+        src={src}
+        alt=""
+        onError={() => setImgBroken(true)}
+        className={cn('size-full object-cover', imgBroken && 'opacity-0')}
+      />
+      {imgBroken ? (
+        <div
+          className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center p-4 text-sm"
+          aria-hidden
+        >
+          Image unavailable
+        </div>
+      ) : null}
+    </>
+  )
+}
+
 /**
  * Static home hero: manual prev/next only (no auto-rotate). Uses separate mobile/desktop assets when set.
  */
 export function HeroCarousel({ slides, className }: HeroCarouselProps) {
   const [i, setI] = useState(0)
-  const [imgBroken, setImgBroken] = useState(false)
   const navigate = useNavigate()
   const isMdUp = useMinWidth(768)
-
-  useEffect(() => {
-    setImgBroken(false)
-  }, [i, slides])
 
   const go = useCallback(
     (next: number) => {
@@ -67,20 +85,7 @@ export function HeroCarousel({ slides, className }: HeroCarouselProps) {
           !clickable ? 'cursor-default' : 'cursor-pointer',
         )}
       >
-        <img
-          src={src}
-          alt=""
-          onError={() => setImgBroken(true)}
-          className={cn('size-full object-cover', imgBroken && 'opacity-0')}
-        />
-        {imgBroken ? (
-          <div
-            className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center p-4 text-sm"
-            aria-hidden
-          >
-            Image unavailable
-          </div>
-        ) : null}
+        <HeroSlideImage key={src} src={src} />
       </button>
       {slides.length > 1 && (
         <>

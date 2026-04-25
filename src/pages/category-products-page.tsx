@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Grid2x2, PackageSearch, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import {
   AlertDialog,
@@ -32,7 +32,12 @@ export function CategoryProductsPage() {
   const [searchParams] = useSearchParams()
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const { city, latitude, longitude } = useLocationStore()
-  const [subCategoryId, setSubCategoryId] = useState<string | null>(null)
+  const [subOverride, setSubOverride] = useState<string | null | undefined>(undefined)
+  const [trackedCategoryId, setTrackedCategoryId] = useState(categoryId)
+  if (trackedCategoryId !== categoryId) {
+    setTrackedCategoryId(categoryId)
+    setSubOverride(undefined)
+  }
 
   const {
     cart,
@@ -83,24 +88,23 @@ export function CategoryProductsPage() {
   const sortedItems = useMemo(() => sortByPlp(items, 'relevance'), [items])
 
   const cat = categoryQuery.data
-  const subCategories = cat?.subCategories ?? []
+  const subCategories = useMemo(() => cat?.subCategories ?? [], [cat?.subCategories])
+  const urlSubCategoryId = useMemo(() => {
+    const raw = searchParams.get('sub')?.trim()
+    if (!raw) return null
+    return subCategories.some((s) => s.id === raw) ? raw : null
+  }, [searchParams, subCategories])
+
+  const subCategoryId = subOverride !== undefined ? subOverride : urlSubCategoryId
+
+  const setSubCategoryId = (id: string | null) => {
+    setSubOverride(id)
+  }
+
   const activeSubCategoryName = useMemo(() => {
     if (!subCategoryId) return null
     return subCategories.find((s) => s.id === subCategoryId)?.name ?? null
   }, [subCategories, subCategoryId])
-
-  useEffect(() => {
-    setSubCategoryId(null)
-  }, [categoryId])
-
-  useEffect(() => {
-    const sub = searchParams.get('sub')?.trim()
-    if (!sub) return
-    const subs = categoryQuery.data?.subCategories ?? []
-    if (subs.some((s) => s.id === sub)) {
-      setSubCategoryId(sub)
-    }
-  }, [searchParams, categoryQuery.data?.subCategories, categoryId])
 
   const scrollWatchKey = `${categoryId}-${subCategoryId ?? ''}-${productsQuery.dataUpdatedAt}-${items.length}`
 

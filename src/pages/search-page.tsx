@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ArrowRight, Search, Store } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -56,6 +56,11 @@ export function SearchPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [filterSubCategoryId, setFilterSubCategoryId] = useState<string | null>(null);
+  const [trackedFilterCategoryId, setTrackedFilterCategoryId] = useState(filterCategoryId);
+  if (trackedFilterCategoryId !== filterCategoryId) {
+    setTrackedFilterCategoryId(filterCategoryId);
+    setFilterSubCategoryId(null);
+  }
 
   const categoriesQuery = useQuery({
     queryKey: queryKeys.catalog.categories,
@@ -148,10 +153,6 @@ export function SearchPage() {
     const cat = categoriesQuery.data?.find((c) => c.id === filterCategoryId);
     return cat?.subCategories ?? [];
   }, [categoriesQuery.data, filterCategoryId]);
-
-  useEffect(() => {
-    setFilterSubCategoryId(null);
-  }, [filterCategoryId]);
 
   const filteredProducts = useMemo(() => {
     let list = products;

@@ -72,7 +72,10 @@ export function HomePage() {
       }),
   });
 
-  const featuredProducts = featuredProductsQuery.data?.items ?? [];
+  const featuredProducts = useMemo(
+    () => featuredProductsQuery.data?.items ?? [],
+    [featuredProductsQuery.data],
+  );
   const mobileFeaturedPreview = useMemo(() => featuredProducts.slice(0, 4), [featuredProducts]);
   const desktopCategories = homeQuery.data?.categories.slice(0, 8) ?? [];
   const heroSlides = homeQuery.data?.heroCarousel ?? [];

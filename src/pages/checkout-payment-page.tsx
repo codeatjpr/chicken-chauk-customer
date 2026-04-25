@@ -3,7 +3,7 @@ import { ChevronLeft, Loader2Icon, MapPin, ShoppingBag, Tag } from 'lucide-react
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { openRazorpayCheckout } from '@/components/organisms/pay-order-button'
+import { openRazorpayCheckout } from '@/lib/open-razorpay-checkout'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'

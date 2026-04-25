@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Search, Store, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -47,6 +47,13 @@ export function ProductBrowsePage() {
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null)
   const [filterSubCategoryId, setFilterSubCategoryId] = useState<string | null>(null)
+  const [trackedFilterCategoryId, setTrackedFilterCategoryId] = useState(filterCategoryId)
+  if (trackedFilterCategoryId !== filterCategoryId) {
+    setTrackedFilterCategoryId(filterCategoryId)
+    setFilterSubCategoryId(null)
+  }
+
+  const appliedFilterSubCategoryId = filterCategoryId && isLg ? filterSubCategoryId : null
   const [productSearchInput, setProductSearchInput] = useState('')
   const debouncedProductSearch = useDebounceValue(productSearchInput.trim(), 350)
   const productSearch =
@@ -75,7 +82,7 @@ export function ProductBrowsePage() {
       latitude,
       longitude,
       filterCategoryId ?? undefined,
-      filterSubCategoryId,
+      appliedFilterSubCategoryId,
       productSearch,
     ),
     queryFn: ({ pageParam }) =>
@@ -84,7 +91,7 @@ export function ProductBrowsePage() {
         latitude,
         longitude,
         ...(filterCategoryId ? { categoryId: filterCategoryId } : {}),
-        ...(filterSubCategoryId ? { subCategoryId: filterSubCategoryId } : {}),
+        ...(appliedFilterSubCategoryId ? { subCategoryId: appliedFilterSubCategoryId } : {}),
         ...(productSearch ? { search: productSearch } : {}),
         page: pageParam,
         limit: 24,
@@ -109,20 +116,12 @@ export function ProductBrowsePage() {
     return cat?.subCategories ?? []
   }, [categoriesQuery.data, filterCategoryId])
 
-  useEffect(() => {
-    setFilterSubCategoryId(null)
-  }, [filterCategoryId])
-
-  useEffect(() => {
-    if (!isLg) setFilterSubCategoryId(null)
-  }, [isLg])
-
   const selectedCategoryName = useMemo(() => {
     if (!filterCategoryId) return null
     return categoriesQuery.data?.find((c) => c.id === filterCategoryId)?.name ?? null
   }, [categoriesQuery.data, filterCategoryId])
 
-  const scrollWatchKey = `${filterCategoryId ?? ''}-${filterSubCategoryId ?? ''}-${productSearch ?? ''}-${productsQuery.dataUpdatedAt}-${items.length}`
+  const scrollWatchKey = `${filterCategoryId ?? ''}-${appliedFilterSubCategoryId ?? ''}-${productSearch ?? ''}-${productsQuery.dataUpdatedAt}-${items.length}`
 
   const effectiveView = isLg ? view : 'grid'
 

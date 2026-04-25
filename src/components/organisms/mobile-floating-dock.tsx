@@ -55,7 +55,7 @@ export function MobileFloatingDock() {
           if (to === ROUTES.cart) {
             return (
               <NavLink key={to} to={to} className={linkClass}>
-                {({ isActive }) => (
+                {() => (
                   <>
                     <span className="relative inline-flex">
                       <Icon className="size-[22px] shrink-0" aria-hidden />

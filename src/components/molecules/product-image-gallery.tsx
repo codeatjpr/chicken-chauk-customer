@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 type ProductImageGalleryProps = {
@@ -14,8 +14,12 @@ type ProductImageGalleryProps = {
   fallbackLetter?: string
 }
 
-export function ProductImageGallery({
-  urls,
+type ProductImageGalleryInnerProps = Omit<ProductImageGalleryProps, 'urls'> & {
+  slides: string[]
+}
+
+function ProductImageGalleryInner({
+  slides,
   alt,
   className,
   imageClassName,
@@ -23,26 +27,10 @@ export function ProductImageGallery({
   unavailable,
   unavailableLabel = 'Unavailable',
   fallbackLetter = '?',
-}: ProductImageGalleryProps) {
-  const slides = useMemo(() => {
-    const seen = new Set<string>()
-    const out: string[] = []
-    for (const u of urls) {
-      if (!u) continue
-      if (seen.has(u)) continue
-      seen.add(u)
-      out.push(u)
-    }
-    return out
-  }, [urls])
-
+}: ProductImageGalleryInnerProps) {
   const [index, setIndex] = useState(0)
   const n = slides.length
   const safeIndex = n === 0 ? 0 : index % n
-
-  useEffect(() => {
-    setIndex(0)
-  }, [urls])
 
   const go = useCallback(
     (dir: -1 | 1) => {
@@ -127,5 +115,44 @@ export function ProductImageGallery({
         </div>
       ) : null}
     </div>
+  )
+}
+
+export function ProductImageGallery({
+  urls,
+  alt,
+  className,
+  imageClassName,
+  discountPercent,
+  unavailable,
+  unavailableLabel,
+  fallbackLetter,
+}: ProductImageGalleryProps) {
+  const slides = useMemo(() => {
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const u of urls) {
+      if (!u) continue
+      if (seen.has(u)) continue
+      seen.add(u)
+      out.push(u)
+    }
+    return out
+  }, [urls])
+
+  const slidesKey = slides.join('\0')
+
+  return (
+    <ProductImageGalleryInner
+      key={slidesKey}
+      slides={slides}
+      alt={alt}
+      className={className}
+      imageClassName={imageClassName}
+      discountPercent={discountPercent}
+      unavailable={unavailable}
+      unavailableLabel={unavailableLabel}
+      fallbackLetter={fallbackLetter}
+    />
   )
 }

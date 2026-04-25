@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from 'react'
+import { type RefObject, useEffect, useLayoutEffect, useRef } from 'react'
 
 type Args = {
   hasNextPage: boolean
@@ -26,7 +26,10 @@ export function useInfiniteScrollSentinel(
   }: Args,
 ) {
   const stateRef = useRef({ hasNextPage, isFetchingNextPage, fetchNextPage })
-  stateRef.current = { hasNextPage, isFetchingNextPage, fetchNextPage }
+
+  useLayoutEffect(() => {
+    stateRef.current = { hasNextPage, isFetchingNextPage, fetchNextPage }
+  })
 
   useEffect(() => {
     if (!enabled) return

@@ -14,7 +14,7 @@ import {
   Store,
   User,
 } from "lucide-react";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { brandLogo } from "@/constants/brand-assets";
@@ -214,6 +214,7 @@ export function AppHeader() {
   const [searchParams] = useSearchParams();
   const [locOpen, setLocOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [lastSearchUrlStamp, setLastSearchUrlStamp] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const searchRefMobile = useRef<HTMLInputElement>(null);
   const authed = useAuthStore(selectIsAuthenticated);
@@ -234,11 +235,18 @@ export function AppHeader() {
 
   const onCart = location.pathname === ROUTES.cart;
   const qParam = searchParams.get("q")?.trim() ?? "";
-  useEffect(() => {
-    if (location.pathname === ROUTES.search && qParam) {
-      setSearchValue(qParam);
+  const searchUrlStamp =
+    location.pathname === ROUTES.search && qParam ? `${location.pathname}\0${qParam}` : null;
+  if (searchUrlStamp !== null) {
+    if (lastSearchUrlStamp !== searchUrlStamp) {
+      setLastSearchUrlStamp(searchUrlStamp);
+      if (searchValue !== qParam) {
+        setSearchValue(qParam);
+      }
     }
-  }, [location.pathname, qParam]);
+  } else if (lastSearchUrlStamp !== null) {
+    setLastSearchUrlStamp(null);
+  }
 
   const goToSearchPage = () => {
     navigate(ROUTES.search);
