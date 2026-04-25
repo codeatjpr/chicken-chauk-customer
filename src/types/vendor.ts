@@ -25,4 +25,6 @@ export type VendorPublicDto = {
 
 export type NearbyVendorDto = VendorPublicDto & {
   distanceKm: number
+  /** Present when the nearby-vendors API includes favorite state for the current user. */
+  isFavorite?: boolean
 }

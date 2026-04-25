@@ -238,7 +238,7 @@ export function SearchPage() {
                       prepTime={v.prepTime}
                       distanceKm={v.distanceKm}
                       isOpen={v.isOpen}
-                      isFavorite={v.isFavorite}
+                      isFavorite={v.isFavorite ?? false}
                       onFavoriteClick={() => {
                         if (!authed) {
                           navigate(ROUTES.login, {
@@ -324,7 +324,7 @@ export function SearchPage() {
                       totalRatings={v.totalRatings}
                       prepTime={v.prepTime}
                       isOpen={v.isOpen}
-                      isFavorite={v.isFavorite}
+                      isFavorite={v.isFavorite ?? false}
                       onFavoriteClick={() => {
                         if (!authed) {
                           navigate(ROUTES.login, {

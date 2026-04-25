@@ -17,7 +17,7 @@ import { CartPanel } from '@/components/organisms/cart-panel'
 import { CategoryPill } from '@/components/molecules/category-pill'
 import { ProductCard } from '@/components/molecules/product-card'
 import { EmptyState } from '@/components/molecules/empty-state'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -336,7 +336,7 @@ export function VendorPage() {
                           description={row.description ?? row.product.description}
                           categoryName={row.product.category?.name ?? null}
                           subCategoryName={row.product.subCategory?.name ?? null}
-                          vendorName={vendor.name}
+                          vendorName={vendor?.name ?? 'Shop'}
                           merchLabel={pickMerchLabel(row.id, i)}
                           packInfo={{
                             weightLabel: weightLabel || null,
@@ -407,12 +407,16 @@ export function VendorPage() {
                 <p className="font-semibold tabular-nums">{formatInr(cart.estimatedTotal)}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Button type="button" variant="outline" size="sm" className="gap-1 px-2.5" asChild>
-                  <Link to={ROUTES.cart}>
-                    <Pencil className="size-3.5" />
-                    Edit
-                  </Link>
-                </Button>
+                <Link
+                  to={ROUTES.cart}
+                  className={cn(
+                    buttonVariants({ variant: 'outline', size: 'sm' }),
+                    'inline-flex gap-1 px-2.5',
+                  )}
+                >
+                  <Pencil className="size-3.5" />
+                  Edit
+                </Link>
                 <Button
                   type="button"
                   size="sm"

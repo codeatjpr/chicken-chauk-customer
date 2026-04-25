@@ -57,6 +57,16 @@ export function CategoryProductsPage() {
     enabled: Boolean(categoryId),
   })
 
+  const cat = categoryQuery.data
+  const subCategories = useMemo(() => cat?.subCategories ?? [], [cat?.subCategories])
+  const urlSubCategoryId = useMemo(() => {
+    const raw = searchParams.get('sub')?.trim()
+    if (!raw) return null
+    return subCategories.some((s) => s.id === raw) ? raw : null
+  }, [searchParams, subCategories])
+
+  const subCategoryId = subOverride !== undefined ? subOverride : urlSubCategoryId
+
   const productsQuery = useInfiniteQuery({
     queryKey: queryKeys.discovery.products(
       city,
@@ -86,16 +96,6 @@ export function CategoryProductsPage() {
   )
   const total = productsQuery.data?.pages[0]?.total ?? items.length
   const sortedItems = useMemo(() => sortByPlp(items, 'relevance'), [items])
-
-  const cat = categoryQuery.data
-  const subCategories = useMemo(() => cat?.subCategories ?? [], [cat?.subCategories])
-  const urlSubCategoryId = useMemo(() => {
-    const raw = searchParams.get('sub')?.trim()
-    if (!raw) return null
-    return subCategories.some((s) => s.id === raw) ? raw : null
-  }, [searchParams, subCategories])
-
-  const subCategoryId = subOverride !== undefined ? subOverride : urlSubCategoryId
 
   const setSubCategoryId = (id: string | null) => {
     setSubOverride(id)
