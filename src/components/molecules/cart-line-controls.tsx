@@ -47,7 +47,7 @@ export function CartLineControls({
         className={cn(
           'shrink-0 font-semibold',
           prominentAdd
-            ? 'h-12 w-full min-w-0 gap-2 rounded-xl px-6 text-[0.9375rem] shadow-sm sm:w-auto sm:min-w-48'
+            ? 'h-10 w-auto gap-1.5 self-end rounded-lg px-4 text-sm shadow-sm sm:h-12 sm:min-w-48 sm:gap-2 sm:rounded-xl sm:px-6 sm:text-[0.9375rem]'
             : 'h-8 px-2.5 text-[11px] sm:px-3 sm:text-xs',
           prominentAdd &&
             'bg-primary text-primary-foreground border-0 hover:bg-primary/92 focus-visible:ring-primary/35',
@@ -55,7 +55,7 @@ export function CartLineControls({
         disabled={isAdding || maxQty < 1}
         onClick={() => onAdd(1)}
       >
-        {prominentAdd ? <ShoppingCart className="size-[1.15rem] shrink-0 opacity-95" aria-hidden /> : null}
+        {prominentAdd ? <ShoppingCart className="size-4 shrink-0 opacity-95 sm:size-[1.15rem]" aria-hidden /> : null}
         Add to Cart
       </Button>
     )
@@ -65,8 +65,9 @@ export function CartLineControls({
     return (
       <div
         className={cn(
-          'text-foreground flex w-full max-w-[min(100%,17.5rem)] items-stretch overflow-hidden rounded-xl border bg-card shadow-sm sm:w-auto',
+          'text-foreground ml-auto flex w-auto shrink-0 items-stretch overflow-hidden rounded-lg border bg-card shadow-sm sm:rounded-xl',
           'border-border/90',
+          'max-w-[10.25rem] sm:max-w-none',
         )}
         role="group"
         aria-label="Quantity"
@@ -84,22 +85,22 @@ export function CartLineControls({
           }}
           className={cn(
             'text-muted-foreground hover:text-foreground hover:bg-muted/70',
-            'flex min-w-11 flex-1 items-center justify-center px-3 py-3 transition-colors',
+            'flex min-w-9 flex-1 items-center justify-center px-2 py-2 transition-colors sm:min-w-11 sm:px-3 sm:py-3',
             'focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40',
             'focus-visible:z-10 focus-visible:ring-2 focus-visible:outline-none',
             line.quantity <= 1 && 'hover:text-destructive',
           )}
         >
           {line.quantity <= 1 ? (
-            <Trash2 className="size-4.5" strokeWidth={2} aria-hidden />
+            <Trash2 className="size-4 sm:size-4.5" strokeWidth={2} aria-hidden />
           ) : (
-            <Minus className="size-4.5" strokeWidth={2} aria-hidden />
+            <Minus className="size-4 sm:size-4.5" strokeWidth={2} aria-hidden />
           )}
         </button>
         <div
           className={cn(
-            'border-border/70 bg-muted/25 flex min-w-12 items-center justify-center border-x px-3 py-2',
-            'text-lg font-semibold tabular-nums tracking-tight',
+            'border-border/70 bg-muted/25 flex min-w-10 items-center justify-center border-x px-2 py-1.5 sm:min-w-12 sm:px-3 sm:py-2',
+            'text-base font-semibold tabular-nums tracking-tight sm:text-lg',
           )}
         >
           {line.quantity}
@@ -110,12 +111,12 @@ export function CartLineControls({
           aria-label="Increase quantity"
           onClick={() => onUpdateQty(line.id, line.quantity + 1)}
           className={cn(
-            'text-muted-foreground hover:text-primary flex min-w-11 flex-1 items-center justify-center px-3 py-3 transition-colors',
+            'text-muted-foreground hover:text-primary flex min-w-9 flex-1 items-center justify-center px-2 py-2 transition-colors sm:min-w-11 sm:px-3 sm:py-3',
             'hover:bg-muted/70 disabled:pointer-events-none disabled:opacity-40',
             'focus-visible:ring-ring focus-visible:z-10 focus-visible:ring-2 focus-visible:outline-none',
           )}
         >
-          <Plus className="size-4.5" strokeWidth={2} aria-hidden />
+          <Plus className="size-4 sm:size-4.5" strokeWidth={2} aria-hidden />
         </button>
       </div>
     )

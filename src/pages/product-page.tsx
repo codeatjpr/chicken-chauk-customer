@@ -353,8 +353,11 @@ export function ProductPage() {
                     ) : null}
                     <p className="text-muted-foreground mt-0.5 text-[11px]">(incl. of all taxes)</p>
                   </div>
-                  <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:items-end" onClick={(e) => e.stopPropagation()}>
-                    <div className="w-full sm:w-auto">
+                  <div
+                    className="flex w-full shrink-0 flex-col items-end gap-2 sm:w-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="w-auto">
                       <CartLineControls
                         cart={cart}
                         vendorProductId={displayOffer.id}

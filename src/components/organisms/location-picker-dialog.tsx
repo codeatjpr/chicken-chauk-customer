@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -24,33 +22,26 @@ export function LocationPickerDialog({
   onOpenChange,
 }: LocationPickerDialogProps) {
   const { city, displayLabel, latitude, longitude, setLocation } = useLocationStore()
-  const [selectedSpot, setSelectedSpot] = useState<LocationSelection | null>(null)
-  const [draftLat, setDraftLat] = useState(latitude)
-  const [draftLng, setDraftLng] = useState(longitude)
-
-  const syncFromStore = () => {
-    setSelectedSpot(null)
-    setDraftLat(latitude)
-    setDraftLng(longitude)
-  }
+  /** Remount search when the dialog opens so field / list state does not carry over. */
+  const [sessionKey, setSessionKey] = useState(0)
 
   const handleOpen = (o: boolean) => {
-    if (o) syncFromStore()
+    if (o) setSessionKey((k) => k + 1)
     onOpenChange(o)
   }
 
-  const save = () => {
-    if (!Number.isFinite(draftLat) || !Number.isFinite(draftLng)) {
+  const applyAndClose = (selection: LocationSelection) => {
+    if (!Number.isFinite(selection.latitude) || !Number.isFinite(selection.longitude)) {
       toast.error('Search or use current location')
       return
     }
-    const cityForApi = selectedSpot?.city?.trim() || city
+    const cityForApi = selection.city?.trim() || city
     const labelForHeader =
-      selectedSpot?.displayName?.trim() ||
+      selection.displayName?.trim() ||
       displayLabel.trim() ||
       cityForApi ||
-      formatShortCoordLabel(draftLat, draftLng)
-    setLocation(cityForApi, draftLat, draftLng, labelForHeader)
+      formatShortCoordLabel(selection.latitude, selection.longitude)
+    setLocation(cityForApi, selection.latitude, selection.longitude, labelForHeader)
     toast.success('Location updated')
     onOpenChange(false)
   }
@@ -58,34 +49,24 @@ export function LocationPickerDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogContent className="flex max-h-[90vh] w-[calc(100%-1.5rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[400px]">
-        <DialogHeader className="border-border shrink-0 px-4 pt-4 pb-3 sm:px-5">
-          <DialogTitle className="text-base font-semibold">Your location</DialogTitle>
+        <DialogHeader className="shrink-0 border-b border-zinc-100/90 px-4 pt-4 pb-3 sm:px-5">
+          <DialogTitle className="text-base font-semibold tracking-tight">Your location</DialogTitle>
           <DialogDescription className="sr-only">
-            Search for an address or use your current location
+            Search for an address or use your current location. Choosing a result saves it
+            automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-5">
           <LocationSearchMap
+            key={sessionKey}
             embedded
-            latitude={draftLat}
-            longitude={draftLng}
+            latitude={latitude}
+            longitude={longitude}
             initialSearchText=""
             initialSelectedSummary={displayLabel || undefined}
-            onPick={(selection) => {
-              setSelectedSpot(selection)
-              setDraftLat(selection.latitude)
-              setDraftLng(selection.longitude)
-            }}
+            onPick={applyAndClose}
           />
         </div>
-        <DialogFooter className="border-border mt-0 shrink-0 gap-2 border-t px-4 py-3 sm:px-5">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="button" size="sm" onClick={save}>
-            Save
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

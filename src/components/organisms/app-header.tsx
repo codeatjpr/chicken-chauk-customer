@@ -70,8 +70,8 @@ function AccountMenu() {
           type="button"
           className={cn(
             "inline-flex items-center gap-2 rounded-full transition-colors",
-            "border-border/80 bg-white text-foreground hover:bg-zinc-50 border px-3 py-1.5 shadow-sm min-h-10",
-            "-m-1 size-10 shrink-0 justify-center border-0 bg-transparent p-0 shadow-none hover:bg-transparent lg:m-0 lg:size-auto lg:min-h-10 lg:justify-start lg:border lg:bg-white lg:px-3 lg:py-1.5 lg:shadow-sm",
+            "text-foreground hover:bg-muted/50 min-h-10",
+            "-m-1 size-10 shrink-0 justify-center bg-transparent p-0 hover:bg-transparent lg:m-0 lg:size-auto lg:min-h-10 lg:justify-start lg:bg-muted/30 lg:px-3 lg:py-1.5",
           )}>
           <User className="text-primary size-[22px] shrink-0 stroke-[1.75] lg:size-4 lg:text-muted-foreground lg:stroke-2" aria-hidden />
           <span className="hidden min-w-0 flex-col items-start text-left leading-tight lg:flex">
@@ -366,8 +366,8 @@ export function AppHeader() {
             <Link
               to={ROUTES.cart}
               className={cn(
-                "border-border/80 bg-white text-foreground hover:bg-zinc-50 hidden items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm transition-colors lg:inline-flex",
-                onCart && "ring-primary/25 ring-2",
+                "text-foreground hover:bg-muted/50 hidden items-center gap-2 rounded-full bg-muted/30 px-3 py-1.5 transition-colors lg:inline-flex",
+                onCart && "bg-muted/45",
               )}
               aria-label={`Cart${cartCount ? `, ${cartCount} items` : ""}`}>
               <span className="relative inline-flex">

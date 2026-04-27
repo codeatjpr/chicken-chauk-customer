@@ -31,7 +31,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queryKeys } from '@/constants/query-keys'
-import { categoryPath, vendorPath, vendorProductPath } from '@/constants/routes'
+import { vendorPath, vendorProductPath } from '@/constants/routes'
 import { useVendorCartActions } from '@/hooks/use-vendor-cart-actions'
 import { pickMerchLabel } from '@/lib/merch-label'
 import { RichTextBody } from '@/components/molecules/rich-text-body'
@@ -149,40 +149,30 @@ export function VendorProductPage() {
               {vp.product.category || vp.product.subCategory ? (
                 <div className="flex flex-wrap items-stretch gap-2 sm:gap-3">
                   {vp.product.category ? (
-                    <Link
-                      to={categoryPath(vp.product.category.id)}
-                      className={cn(
-                        'border-primary/35 from-primary/15 hover:border-primary/50 focus-visible:ring-primary/30',
-                        'inline-flex min-h-13 min-w-0 max-w-full flex-col justify-center rounded-2xl border bg-linear-to-br to-primary/5',
-                        'px-3 py-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none sm:px-4',
-                      )}
+                    <div
+                      className="bg-muted/35 inline-flex min-h-13 min-w-0 max-w-full flex-col justify-center rounded-xl px-3 py-2 sm:px-4"
+                      aria-label="Product category"
                     >
-                      <span className="text-primary/80 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
                         Category
                       </span>
-                      <span className="text-primary mt-0.5 text-sm font-semibold sm:text-base">
+                      <span className="text-foreground mt-0.5 text-sm font-semibold sm:text-base">
                         {vp.product.category.name}
                       </span>
-                    </Link>
+                    </div>
                   ) : null}
                   {vp.product.subCategory && vp.product.category ? (
-                    <Link
-                      to={`${categoryPath(vp.product.category.id)}?sub=${encodeURIComponent(
-                        vp.product.subCategory.id,
-                      )}`}
-                      className={cn(
-                        'border-emerald-500/35 from-emerald-500/12 hover:border-emerald-500/55 focus-visible:ring-emerald-500/30',
-                        'inline-flex min-h-13 min-w-0 max-w-full flex-col justify-center rounded-2xl border border-dashed bg-linear-to-br to-emerald-600/5',
-                        'px-3 py-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none sm:px-4',
-                      )}
+                    <div
+                      className="bg-muted/35 inline-flex min-h-13 min-w-0 max-w-full flex-col justify-center rounded-xl px-3 py-2 sm:px-4"
+                      aria-label="Product sub-category"
                     >
-                      <span className="text-emerald-800/80 dark:text-emerald-300/90 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
                         Sub-category
                       </span>
-                      <span className="mt-0.5 text-sm font-semibold text-emerald-950 dark:text-emerald-100 sm:text-base">
+                      <span className="text-foreground mt-0.5 text-sm font-semibold sm:text-base">
                         {vp.product.subCategory.name}
                       </span>
-                    </Link>
+                    </div>
                   ) : null}
                 </div>
               ) : null}
@@ -243,7 +233,7 @@ export function VendorProductPage() {
                     <p className="text-muted-foreground text-xs">(incl. of all taxes)</p>
                   )}
                 </div>
-                <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+                <div className="flex w-full shrink-0 flex-col items-end gap-2 sm:w-auto">
                   <CartLineControls
                     cart={cart}
                     vendorProductId={vp.id}

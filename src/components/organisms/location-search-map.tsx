@@ -248,7 +248,7 @@ function LocationSearchInner({
             value={searchText}
             onChange={(e) => onSearchTextChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="border-input bg-muted/30 h-10 max-w-full rounded-xl pr-9 pl-9 text-sm"
+            className="border-border/50 bg-muted/20 text-foreground h-10 max-w-full rounded-full border pr-9 pl-9 text-sm shadow-none focus-visible:ring-0 focus-visible:outline-none focus-visible:border-border/60"
             autoComplete="off"
             spellCheck={false}
             autoCorrect="off"
@@ -282,8 +282,8 @@ function LocationSearchInner({
           onClick={handleUseMyLocation}
           disabled={geoLoading}
           className={cn(
-            'border-input flex w-full items-center gap-2.5 rounded-xl border bg-transparent px-3 py-2.5 text-left text-sm transition-colors',
-            'hover:bg-muted/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
+            'flex w-full items-center gap-2.5 rounded-full bg-muted/25 px-3 py-2.5 text-left text-sm transition-colors',
+            'hover:bg-muted/45 focus-visible:ring-border/50 focus-visible:ring-1 focus-visible:outline-none',
             'disabled:pointer-events-none disabled:opacity-50',
           )}
         >
@@ -301,12 +301,7 @@ function LocationSearchInner({
 
         {searchHits.length > 0 ? (
           <ul
-            className={cn(
-              'border-border bg-background divide-y divide-dashed overflow-x-hidden rounded-lg border text-sm',
-              embedded
-                ? ''
-                : 'max-h-[min(40vh,240px)] overflow-y-auto',
-            )}
+            className="divide-border/60 bg-muted/15 max-h-[min(44vh,280px)] divide-y overflow-x-hidden overflow-y-auto rounded-xl text-sm"
           >
             {searchHits.map((hit) => {
               const split = splitSuggestionLabel(hit.label)
@@ -316,7 +311,7 @@ function LocationSearchInner({
                 <li key={hit.placeId} className="min-w-0">
                   <button
                     type="button"
-                    className="hover:bg-muted/50 flex w-full min-w-0 items-start gap-2 px-3 py-2.5 text-left transition-colors"
+                    className="hover:bg-background/80 active:bg-background flex w-full min-w-0 items-start gap-2 px-3 py-2.5 text-left transition-colors"
                     onClick={() => void pickHit(hit)}
                   >
                     <MapPin className="text-muted-foreground mt-0.5 size-3.5 shrink-0" aria-hidden />
@@ -342,12 +337,9 @@ function LocationSearchInner({
 
         {fullAddress || lookupLoading ? (
           <div
-            className={cn(
-              'rounded-lg border border-dashed px-3 py-2',
-              embedded ? 'border-border/60 bg-muted/15' : 'border-border/80 bg-muted/20',
-            )}
+            className={cn('rounded-xl px-3 py-2.5', 'bg-muted/20', embedded && 'bg-muted/15')}
           >
-            <p className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
+            <p className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wider uppercase">
               Selected
             </p>
             {lookupLoading ? (
